@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-import argparse
 import facebook_utils
+
+import argparse
 
 parser = argparse.ArgumentParser(
 	usage = "Save your Facebook app secret to a local file.",
@@ -10,5 +11,5 @@ parser = argparse.ArgumentParser(
 parser.add_argument("app_secret", help = "Facebook add secret", type = str)
 args = parser.parse_args()
 
-tokensManager = facebook_utils.TokensManager()
-tokensManager.set_app_secret(args.app_secret)
+tokens_manager = facebook_utils.TokensManager()
+tokens_manager.set_app_secret(args.app_secret)

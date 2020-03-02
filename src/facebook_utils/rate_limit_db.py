@@ -38,10 +38,10 @@ class UsageData(NamedTuple):
 	duration: float
 
 class RateLimitDB:
-	def __init__(self, verbose = True, db_folder = DB_FOLDER):
+	def __init__(self, verbose = True, db_folder = None):
 		assert isinstance(verbose, bool)
 		self.verbose = verbose
-		self.db_folder = db_folder
+		self.db_folder = DB_FOLDER if db_folder is None else db_folder
 		self.db_path = os.path.join(self.db_folder, DB_FILENAME)
 		self.connection = None
 		self.cursor = None

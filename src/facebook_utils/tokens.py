@@ -20,7 +20,7 @@ APP_SECRET_OPTION = "app_secret"
 
 # Token configurations
 LATEST_SECTION = "latest"
-LOG_SECTION_PREFIX = "previous"
+LOG_SECTION_PREFIX = "log"
 TIMESTAMP_OPTION = "timestamp"
 SHORT_LIVED_USER_ACCESS_TOKEN_OPTION = "short_lived_user_access_token"
 LONG_LIVED_USER_ACCESS_TOKEN_OPTION = "long_lived_user_access_token"

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-import argparse
 import facebook_utils
+
+import argparse
 
 parser = argparse.ArgumentParser(
 	usage = "Generate a long-lived user access token.",
@@ -10,5 +11,5 @@ parser = argparse.ArgumentParser(
 parser.add_argument("short_lived_token", help = "short-lived user access token", type = str)
 args = parser.parse_args()
 
-tokensManager = facebook_utils.TokensManager()
-tokensManager.generate_user_access_token(args.short_lived_token)
+tokens_manager = facebook_utils.TokensManager()
+tokens_manager.generate_user_access_token(args.short_lived_token)
