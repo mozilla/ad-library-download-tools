@@ -17,6 +17,7 @@ REQUESTS_THRESHOLD_50 = 0.50 * REQUESTS_PER_DURATION
 REQUESTS_THRESHOLD_25 = 0.25 * REQUESTS_PER_DURATION
 REQUESTS_THRESHOLD_10 = 0.10 * REQUESTS_PER_DURATION
 DELAY_MIN = 5.0
+DELAY_MAX = 60.0 * 15
 DELAY_SECONDS_75  =  5.0 # 12 *  5 =  60 seconds or  1/15 for  25% bandwidth
 DELAY_SECONDS_50  = 10.0 # 12 * 10 = 120 seconds or  3/15 for  50% bandwidth
 DELAY_SECONDS_25  = 15.0 # 12 * 15 = 180 seconds or  6/15 for  75% bandwidth
@@ -60,16 +61,19 @@ class RateLimitManager:
 			print("    Remaining requests = {:d}".format(remaining_request_count))
 			print("    Remaining bandwidth = {:0.1f}%".format(100.0 * remaining_request_count / REQUESTS_PER_DURATION))
 
-		delay = remaining_request_duration / remaining_request_count if remaining_request_count >= 1 else remaining_request_duration
-		if remaining_request_count >= REQUESTS_THRESHOLD_75:
-			delay = min(delay, DELAY_SECONDS_75)
-		if remaining_request_count >= REQUESTS_THRESHOLD_50:
-			delay = min(delay, DELAY_SECONDS_50)
-		if remaining_request_count >= REQUESTS_THRESHOLD_25:
-			delay = min(delay, DELAY_SECONDS_25)
-		if remaining_request_count >= REQUESTS_THRESHOLD_10:
-			delay = min(delay, DELAY_SECONDS_10)
-		delay = max(DELAY_MIN, delay)
+		if remaining_request_count <= 0:
+			delay = DELAY_MAX
+		else:
+			delay = remaining_request_duration / remaining_request_count if remaining_request_count >= 1 else remaining_request_duration
+			if remaining_request_count >= REQUESTS_THRESHOLD_75:
+				delay = min(delay, DELAY_SECONDS_75)
+			if remaining_request_count >= REQUESTS_THRESHOLD_50:
+				delay = min(delay, DELAY_SECONDS_50)
+			if remaining_request_count >= REQUESTS_THRESHOLD_25:
+				delay = min(delay, DELAY_SECONDS_25)
+			if remaining_request_count >= REQUESTS_THRESHOLD_10:
+				delay = min(delay, DELAY_SECONDS_10)
+			delay = max(DELAY_MIN, delay)
 
 		if self.verbose:
 			print("    Delay = {:0.1f} second{:s}".format(delay, "" if delay == 1 else "s"))

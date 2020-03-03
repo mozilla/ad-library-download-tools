@@ -4,3 +4,5 @@ __pycache__
 
 /prefs/*
 /db/*
+/data/*
+/external_files/*

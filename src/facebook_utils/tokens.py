@@ -33,39 +33,17 @@ class TokensManager:
 	def __init__(self, verbose = True):
 		assert isinstance(verbose, bool)
 		self.verbose = verbose
-		self._init_files()
+		self._init_configs()
 
-	def set_app_id(self, app_id):
-		assert isinstance(app_id, str)
-		self._write_app_id(app_id)
+	def _init_configs(self):
+		for filename in [APP_CONFIG_FILENAME, TOKEN_CONFIG_FILENAME]:
+			if not os.path.exists(filename):
+				config = configparser.ConfigParser()
+				with open(filename, "w") as f:
+					config.write(f)
+				if self.verbose:
+					print("[TokensManager] Created file: {}".format(filename))
 
-	def set_app_secret(self, app_secret):
-		assert isinstance(app_secret, str)
-		self._write_app_secret(app_secret)
-
-	def generate_user_access_token(self, short_lived_user_access_token):
-		assert isinstance(short_lived_user_access_token, str)
-		long_lived_user_access_token = self._generate_long_lived_token(short_lived_user_access_token)
-		self._write_user_tokens(short_lived_user_access_token, long_lived_user_access_token)
-	
-	def get_user_access_token(self):
-		long_lived_user_access_token = self._read_latest_user_token()
-		return long_lived_user_access_token
-
-	def _init_files(self):
-		if not os.path.exists(APP_CONFIG_FILENAME):
-			config = configparser.ConfigParser()
-			with open(APP_CONFIG_FILENAME, "w") as f:
-				config.write(f)
-			if self.verbose:
-				print("[TokensManager] Created file: {}".format(APP_CONFIG_FILENAME))
-		if not os.path.exists(TOKEN_CONFIG_FILENAME):
-			config = configparser.ConfigParser()
-			with open(TOKEN_CONFIG_FILENAME, "w") as f:
-				config.write(f)
-			if self.verbose:
-				print("[TokensManager] Created file: {}".format(TOKEN_CONFIG_FILENAME))
-		
 	def _write_app_id(self, app_id):
 		filename = APP_CONFIG_FILENAME
 		config = configparser.ConfigParser()
@@ -77,7 +55,7 @@ class TokensManager:
 			config.write(f)
 		if self.verbose:
 			print("[TokensManager] Wrote app id to file: {}".format(filename))
-	
+
 	def _write_app_secret(self, app_secret):
 		filename = APP_CONFIG_FILENAME
 		config = configparser.ConfigParser()
@@ -104,7 +82,7 @@ class TokensManager:
 		if self.verbose:
 			print("[TokensManager] Read app id from file: {}".format(filename))
 		return app_id
-	
+
 	def _read_app_secret(self):
 		filename = APP_CONFIG_FILENAME
 		try:
@@ -119,7 +97,7 @@ class TokensManager:
 		if self.verbose:
 			print("[TokensManager] Read app secret from file: {}".format(filename))
 		return app_secret
-	
+
 	def _write_user_tokens(self, short_lived_user_access_token, long_lived_user_access_token):
 		filename = TOKEN_CONFIG_FILENAME
 		config = configparser.ConfigParser()
@@ -163,7 +141,7 @@ class TokensManager:
 		if self.verbose:
 			print("[TokensManager] Read the latest long-lived user access token from file: {}".format(filename))
 		return app_secret
-		
+
 	def _generate_long_lived_token(self, short_lived_user_access_token):
 		app_id = self._read_app_id()
 		app_secret = self._read_app_secret()
@@ -191,5 +169,23 @@ class TokensManager:
 			print("[TokensManager] [ERROR] Cannot connect to server:", URL_BASE)
 			print()
 			raise
-			
+
 		return long_lived_user_access_token
+
+	def set_app_id(self, app_id):
+		assert isinstance(app_id, str)
+		self._write_app_id(app_id)
+
+	def set_app_secret(self, app_secret):
+		assert isinstance(app_secret, str)
+		self._write_app_secret(app_secret)
+
+	def generate_user_access_token(self, short_lived_user_access_token):
+		assert isinstance(short_lived_user_access_token, str)
+		long_lived_user_access_token = self._generate_long_lived_token(short_lived_user_access_token)
+		self._write_user_tokens(short_lived_user_access_token, long_lived_user_access_token)
+
+	def get_user_access_token(self):
+		long_lived_user_access_token = self._read_latest_user_token()
+		return long_lived_user_access_token
+

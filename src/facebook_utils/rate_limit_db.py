@@ -9,7 +9,9 @@ from typing import NamedTuple
 
 # Constants for the rate limit database
 DB_FOLDER = Constants.DB_PATH
-DB_FILENAME = "rate_limit.sqlite"
+DB_FILENAME = Constants.RATE_LIMIT_DB_FILENAME
+
+# SQL database constants
 TABLE_NAME = "request_timestamps"
 
 # SQL statements
@@ -38,19 +40,19 @@ class UsageData(NamedTuple):
 	duration: float
 
 class RateLimitDB:
-	def __init__(self, verbose = True, db_folder = None):
+	def __init__(self, db_folder = None, verbose = True):
 		assert isinstance(verbose, bool)
 		self.verbose = verbose
 		self.db_folder = DB_FOLDER if db_folder is None else db_folder
 		self.db_path = os.path.join(self.db_folder, DB_FILENAME)
 		self.connection = None
 		self.cursor = None
-		self._init_folder()
+		self._init_db_folder()
 
-	def _init_folder(self):
+	def _init_db_folder(self):
 		os.makedirs(self.db_folder, exist_ok = True)
 
-	def _has_tables(self) -> bool:
+	def _has_tables(self):
 		self.cursor.execute(TABLE_EXISTS_SQL)
 		one_row = self.cursor.fetchone()
 		table_exists = bool(one_row[0])
