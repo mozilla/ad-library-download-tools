@@ -11,5 +11,5 @@ parser = argparse.ArgumentParser(
 parser.add_argument("app_id", help = "Facebook add id", type = str)
 args = parser.parse_args()
 
-tokens_manager = facebook_utils.TokensManager()
-tokens_manager.set_app_id(args.app_id)
+token_manager = facebook_utils.TokenManager()
+token_manager.set_app_id(args.app_id)

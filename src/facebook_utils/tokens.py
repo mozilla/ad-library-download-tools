@@ -29,7 +29,7 @@ LONG_LIVED_USER_ACCESS_TOKEN_OPTION = "long_lived_user_access_token"
 URL_BASE = "https://graph.facebook.com/oauth/access_token"
 FB_EXCHANGE_TOKEN_GRANT_TYPE = "fb_exchange_token"
 
-class TokensManager:
+class TokenManager:
 	def __init__(self, verbose = True):
 		assert isinstance(verbose, bool)
 		self.verbose = verbose
@@ -42,7 +42,7 @@ class TokensManager:
 				with open(filename, "w") as f:
 					config.write(f)
 				if self.verbose:
-					print("[TokensManager] Created file: {}".format(filename))
+					print("[TokenManager] Created file: {}".format(filename))
 
 	def _write_app_id(self, app_id):
 		filename = APP_CONFIG_FILENAME
@@ -54,7 +54,7 @@ class TokensManager:
 		with open(filename, 'w') as f:
 			config.write(f)
 		if self.verbose:
-			print("[TokensManager] Wrote app id to file: {}".format(filename))
+			print("[TokenManager] Wrote app id to file: {}".format(filename))
 
 	def _write_app_secret(self, app_secret):
 		filename = APP_CONFIG_FILENAME
@@ -66,7 +66,7 @@ class TokensManager:
 		with open(filename, 'w') as f:
 			config.write(f)
 		if self.verbose:
-			print("[TokensManager] Wrote app secret to file: {}".format(filename))
+			print("[TokenManager] Wrote app secret to file: {}".format(filename))
 
 	def _read_app_id(self):
 		filename = APP_CONFIG_FILENAME
@@ -76,11 +76,11 @@ class TokensManager:
 			app_id = config.get(APP_SECTION, APP_ID_OPTION)
 		except (configparser.NoSectionError, configparser.NoOptionError) as e:
 			print()
-			print("[TokensManager] [ERROR] Cannot read app id from file:", filename)
+			print("[TokenManager] [ERROR] Cannot read app id from file:", filename)
 			print()
 			raise
 		if self.verbose:
-			print("[TokensManager] Read app id from file: {}".format(filename))
+			print("[TokenManager] Read app id from file: {}".format(filename))
 		return app_id
 
 	def _read_app_secret(self):
@@ -91,11 +91,11 @@ class TokensManager:
 			app_secret = config.get(APP_SECTION, APP_SECRET_OPTION)
 		except (configparser.NoSectionError, configparser.NoOptionError) as e:
 			print()
-			print("[TokensManager] [ERROR] Cannot read app secret from file:", filename)
+			print("[TokenManager] [ERROR] Cannot read app secret from file:", filename)
 			print()
 			raise
 		if self.verbose:
-			print("[TokensManager] Read app secret from file: {}".format(filename))
+			print("[TokenManager] Read app secret from file: {}".format(filename))
 		return app_secret
 
 	def _write_user_tokens(self, short_lived_user_access_token, long_lived_user_access_token):
@@ -125,7 +125,7 @@ class TokensManager:
 		with open(filename, "w") as f:
 			config.write(f)
 		if self.verbose:
-			print("[TokensManager] Wrote user access tokens to file: {}".format(filename))
+			print("[TokenManager] Wrote user access tokens to file: {}".format(filename))
 
 	def _read_latest_user_token(self):
 		filename = TOKEN_CONFIG_FILENAME
@@ -135,11 +135,11 @@ class TokensManager:
 			app_secret = config.get(LATEST_SECTION, LONG_LIVED_USER_ACCESS_TOKEN_OPTION)
 		except (configparser.NoSectionError, configparser.NoOptionError) as e:
 			print()
-			print("[TokensManager] [ERROR] Cannot read the latest long-lived user access token from file:", filename)
+			print("[TokenManager] [ERROR] Cannot read the latest long-lived user access token from file:", filename)
 			print()
 			raise
 		if self.verbose:
-			print("[TokensManager] Read the latest long-lived user access token from file: {}".format(filename))
+			print("[TokenManager] Read the latest long-lived user access token from file: {}".format(filename))
 		return app_secret
 
 	def _generate_long_lived_token(self, short_lived_user_access_token):
@@ -159,14 +159,14 @@ class TokensManager:
 			results = r.json()
 			if "error" in results:
 				print()
-				print("[TokensManager] [ERROR] Received an error message from server: ", URL_BASE)
+				print("[TokenManager] [ERROR] Received an error message from server: ", URL_BASE)
 				print(json.dumps(results, indent = 2, sort_keys = True))
 				print()
 				raise
 			long_lived_user_access_token = results["access_token"]
 		except requests.exceptions.ConnectionError:
 			print()
-			print("[TokensManager] [ERROR] Cannot connect to server:", URL_BASE)
+			print("[TokenManager] [ERROR] Cannot connect to server:", URL_BASE)
 			print()
 			raise
 

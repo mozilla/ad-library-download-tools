@@ -14,11 +14,31 @@ DB_FILENAME = Constants.QUEUE_DB_FILENAME
 # SQL database constants
 TABLE_NAME = "all_tasks_table"
 ACTIVE_TASKS = "active_tasks"
+QUEUED_TASKS = "queued_tasks"
 STARTED_TASKS = "started_tasks"
 FINISHED_TASKS = "finished_tasks"
 FAILED_TASKS = "failed_tasks"
+CANCELLED_TASKS = "cancelled_tasks"
 NEXT_TASK = "next_task"
-TASK_COUNT = "task_count"
+ACTIVE_TASK_COUNT = "active_task_count"
+
+# CANCELLED - (*, *, *, 1)
+#   Any normal task can be manually cancelled by setting cancelled = 1.
+#   Any cancelled task can be restarted by setting cancelled = 0.
+#
+# QUEUED    - (0, 0, *, 0)
+# STARTED   - (1, 0, *, 0)
+# FINISHED  - (1, 1, *, 0)
+#           - (0, 1, *, 0) should not exist
+#   Normal tasks can be queued, started, or finished.
+#   Active tasks are queued tasks sorted in descending priority.
+#
+# FAILED    - (*, *, 1, 1)
+#           - (*, *, 1, 0) are restarted experiments.
+#   Final state of a failed experiment.
+#   By default, failed tasks are also cancelled (*, *, 1, 1).
+#   A failed task can be turned into a normal task by setting cancelled = 0.
+#   Failed tasks that are re-started have a status of (*, *, 1, 0)
 
 # SQL statements
 CREATE_TABLE_SQL = """CREATE TABLE "{table}" (
@@ -26,6 +46,7 @@ CREATE_TABLE_SQL = """CREATE TABLE "{table}" (
 	"task_priority" INTEGER NOT NULL,
 	"is_task_started" BOOLEAN NOT NULL DEFAULT 0,
 	"is_task_finished" BOOLEAN NOT NULL DEFAULT 0,
+	"is_task_cancelled" BOOLEAN NOT NULL DEFAULT 0,
 	"is_task_failed" BOOLEAN NOT NULL DEFAULT 0,
 	"creation_timestamp" DATETIME NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME')),
 	"start_timestamp" DATETIME DEFAULT NULL,
@@ -84,13 +105,23 @@ INSERT_CREATE_FAILED_TASK_SQL = """INSERT INTO {table} (
 UPDATE_START_TASK_SQL = """UPDATE {table} SET
 	is_task_started = 1,
 	start_timestamp = (DATETIME('NOW', 'LOCALTIME'))
-WHERE task_key = ? AND is_task_started = 0
+WHERE task_key = ? AND is_task_cancelled = 0 AND is_task_started = 0 AND is_task_finished = 0
 ;""".format(table = TABLE_NAME)
 
 UPDATE_FINISH_TASK_SQL = """UPDATE {table} SET
 	is_task_finished = 1,
 	finish_timestamp = (DATETIME('NOW', 'LOCALTIME'))
-WHERE task_key = ? AND is_task_started = 1 AND is_task_finished = 0
+WHERE task_key = ? AND is_task_cancelled = 0 AND is_task_started = 1 AND is_task_finished = 0
+;""".format(table = TABLE_NAME)
+
+UPDATE_CANCEL_TASK_SQL = """UPDATE {table} SET
+	is_task_cancelled = 1
+where task_key = ?
+;""".format(table = TABLE_NAME)
+
+UPDATE_RESTART_TASK_SQL = """UPDATE {table} SET
+	is_task_cancelled = 0
+where task_key = ?
 ;""".format(table = TABLE_NAME)
 
 UPDATE_AMEND_TASK_SQL = """UPDATE {table} SET
@@ -100,50 +131,75 @@ UPDATE_AMEND_TASK_SQL = """UPDATE {table} SET
 	ad_count = ?,
 	paging_cursor = ?,
 	error_code = ?
-WHERE task_key = ? AND is_task_started = 1 AND is_task_finished = 1
+WHERE task_key = ?
 ;""".format(table = TABLE_NAME)
 
 CREATE_ACTIVE_TASKS_INDEX_SQL = """CREATE INDEX {view}_index ON {table} (
-	is_task_failed ASC,
+	is_task_cancelled ASC,
 	is_task_started ASC,
+	is_task_finished ASC,
 	task_priority DESC,
 	creation_timestamp DESC
 );""".format(table = TABLE_NAME, view = ACTIVE_TASKS)
 
-CREATE_STARTED_TASKS_INDEX_SQL = """CREATE INDEX {view}_index on {table} (
-	is_task_failed ASC,
+CREATE_CANCELLED_TASKS_INDEX_SQL = """CREATE INDEX {view}_index ON {table} (
+	is_task_cancelled DESC,
+	creation_timestamp DESC
+);""".format(table = TABLE_NAME, view = CANCELLED_TASKS)
+
+CREATE_QUEUED_TASKS_INDEX_SQL =  """CREATE INDEX {view}_index ON {table} (
+	is_task_cancelled ASC,
 	is_task_started ASC,
+	is_task_finished ASC,
+	creation_timestamp DESC
+);""".format(table = TABLE_NAME, view = QUEUED_TASKS)
+
+CREATE_STARTED_TASKS_INDEX_SQL = """CREATE INDEX {view}_index on {table} (
+	is_task_cancelled ASC,
+	is_task_started DESC,
 	is_task_finished ASC,
 	start_timestamp DESC
 );""".format(table = TABLE_NAME, view = STARTED_TASKS)
 
 CREATE_FINISHED_TASKS_INDEX_SQL = """CREATE INDEX {view}_index ON {table} (
-	is_task_failed ASC,
-	is_task_started ASC,
-	is_task_finished ASC,
+	is_task_cancelled ASC,
+	is_task_started DESC,
+	is_task_finished DESC,
 	finish_timestamp DESC
 );""".format(table = TABLE_NAME, view = FINISHED_TASKS)
 
 CREATE_FAILED_TASKS_INDEX_SQL = """CREATE INDEX {view}_index ON {table} (
-	is_task_failed ASC,
+	is_task_failed DESC,
 	creation_timestamp DESC
 );""".format(table = TABLE_NAME, view = FAILED_TASKS)
 
 CREATE_ACTIVE_TASKS_VIEW_SQL = """CREATE VIEW {view} AS
 	SELECT * FROM {table}
-	WHERE is_task_failed = 0 AND is_task_started = 0
+	WHERE is_task_cancelled = 0 AND is_task_started = 0 AND is_task_finished = 0
 	ORDER BY task_priority DESC, creation_timestamp DESC
 ;""".format(table = TABLE_NAME, view = ACTIVE_TASKS)
 
+CREATE_CANCELLED_TASKS_VIEW_SQL = """CREATE VIEW {view} AS
+	SELECT * FROM {table}
+	WHERE is_task_cancelled = 1
+	ORDER BY creation_timestamp DESC
+;""".format(table = TABLE_NAME, view = CANCELLED_TASKS)
+
+CREATE_QUEUED_TASKS_VIEW_SQL = """CREATE VIEW {view} AS
+	SELECT * FROM {table}
+	WHERE is_task_cancelled = 0 AND is_task_started = 0 AND is_task_finished = 0
+	ORDER BY creation_timestamp DESC
+;""".format(table = TABLE_NAME, view = QUEUED_TASKS)
+
 CREATE_STARTED_TASKS_VIEW_SQL = """CREATE VIEW {view} AS
 	SELECT * FROM {table}
-	WHERE is_task_failed = 0 AND is_task_started = 1 AND is_task_finished = 0
+	WHERE is_task_cancelled = 0 AND is_task_started = 1 AND is_task_finished = 0
 	ORDER BY start_timestamp DESC
 ;""".format(table = TABLE_NAME, view = STARTED_TASKS)
 
 CREATE_FINISHED_TASKS_VIEW_SQL = """CREATE VIEW {view} AS
 	SELECT * FROM {table}
-	WHERE is_task_failed = 0 AND is_task_started = 1 AND is_task_finished = 1
+	WHERE is_task_cancelled = 0 AND is_task_started = 1 AND is_task_finished = 1
 	ORDER BY finish_timestamp DESC
 ;""".format(table = TABLE_NAME, view = FINISHED_TASKS)
 
@@ -155,17 +211,18 @@ CREATE_FAILED_TASKS_VIEW_SQL = """CREATE VIEW {view} AS
 
 CREATE_NEXT_TASK_VIEW_SQL = """CREATE VIEW {view} AS
 	SELECT * FROM {table}
-	WHERE is_task_failed = 0 AND is_task_started = 0
+	WHERE is_task_cancelled = 0 AND is_task_started = 0 AND is_task_finished = 0
 	ORDER BY task_priority DESC, creation_timestamp ASC
+	LIMIT 1
 ;""".format(table = TABLE_NAME, view = NEXT_TASK)
 
-CREATE_TASK_COUNT_VIEW_SQL = """CREATE VIEW {view} AS
+CREATE_ACTIVE_TASK_COUNT_VIEW_SQL = """CREATE VIEW {view} AS
 	SELECT COUNT(*) AS task_count FROM {table}
-;""".format(table = NEXT_TASK, view = TASK_COUNT)
+;""".format(table = ACTIVE_TASKS, view = ACTIVE_TASK_COUNT)
 
 CREATE_EXPERIMENT_REPORTS_VIEW_SQL = """CREATE VIEW experiment_reports AS
 	SELECT
-		creation_timestamp
+		creation_timestamp,
 		experiment_folder,
 		experiment_key,
 		split_index,
@@ -222,28 +279,36 @@ class QueueDB:
 			print("[QueueDB] Creating indexes...")
 		print(CREATE_ACTIVE_TASKS_INDEX_SQL)
 		self.cursor.execute(CREATE_ACTIVE_TASKS_INDEX_SQL)
+		print(CREATE_FAILED_TASKS_INDEX_SQL)
+		self.cursor.execute(CREATE_FAILED_TASKS_INDEX_SQL)
+		print(CREATE_CANCELLED_TASKS_INDEX_SQL)
+		self.cursor.execute(CREATE_CANCELLED_TASKS_INDEX_SQL)
+		print(CREATE_QUEUED_TASKS_INDEX_SQL)
+		self.cursor.execute(CREATE_QUEUED_TASKS_INDEX_SQL)
 		print(CREATE_STARTED_TASKS_INDEX_SQL)
 		self.cursor.execute(CREATE_STARTED_TASKS_INDEX_SQL)
 		print(CREATE_FINISHED_TASKS_INDEX_SQL)
 		self.cursor.execute(CREATE_FINISHED_TASKS_INDEX_SQL)
-		print(CREATE_FAILED_TASKS_INDEX_SQL)
-		self.cursor.execute(CREATE_FAILED_TASKS_INDEX_SQL)
 
 	def _create_views(self):
 		if self.verbose:
 			print("[QueueDB] Creating views...")
 		print(CREATE_ACTIVE_TASKS_VIEW_SQL)
 		self.cursor.execute(CREATE_ACTIVE_TASKS_VIEW_SQL)
+		print(CREATE_QUEUED_TASKS_VIEW_SQL)
+		self.cursor.execute(CREATE_QUEUED_TASKS_VIEW_SQL)
+		print(CREATE_FAILED_TASKS_VIEW_SQL)
+		self.cursor.execute(CREATE_FAILED_TASKS_VIEW_SQL)
+		print(CREATE_CANCELLED_TASKS_VIEW_SQL)
+		self.cursor.execute(CREATE_CANCELLED_TASKS_VIEW_SQL)
 		print(CREATE_STARTED_TASKS_VIEW_SQL)
 		self.cursor.execute(CREATE_STARTED_TASKS_VIEW_SQL)
 		print(CREATE_FINISHED_TASKS_VIEW_SQL)
 		self.cursor.execute(CREATE_FINISHED_TASKS_VIEW_SQL)
-		print(CREATE_FAILED_TASKS_VIEW_SQL)
-		self.cursor.execute(CREATE_FAILED_TASKS_VIEW_SQL)
 		print(CREATE_NEXT_TASK_VIEW_SQL)
 		self.cursor.execute(CREATE_NEXT_TASK_VIEW_SQL)
-		print(CREATE_TASK_COUNT_VIEW_SQL)
-		self.cursor.execute(CREATE_TASK_COUNT_VIEW_SQL)
+		print(CREATE_ACTIVE_TASK_COUNT_VIEW_SQL)
+		self.cursor.execute(CREATE_ACTIVE_TASK_COUNT_VIEW_SQL)
 		print(CREATE_EXPERIMENT_REPORTS_VIEW_SQL)
 		self.cursor.execute(CREATE_EXPERIMENT_REPORTS_VIEW_SQL)
 
@@ -315,13 +380,19 @@ class QueueDB:
 		if self.verbose:
 			print("[QueueDB] Starting task #{}...".format(task_key))
 		assert isinstance(task_key, int)
-		self.cursor.execute(UPDATE_START_TASK_SQL, (task_key,))
+		self.cursor.execute(UPDATE_START_TASK_SQL, (task_key, ))
 
 	def finish_task(self, task_key):
 		if self.verbose:
 			print("[QueueDB] Finishing task #{}...".format(task_key))
 		assert isinstance(task_key, int)
-		self.cursor.execute(UPDATE_FINISH_TASK_SQL, (task_key,))
+		self.cursor.execute(UPDATE_FINISH_TASK_SQL, (task_key, ))
+	
+	def cancel_task(self, task_key):
+		if self.verbose:
+			print("[QueueDB] Cancelling task #{}...".format(task_key))
+		assert isinstance(task_key, int)
+		self.cursor.execute(UPDATE_CANCEL_TASK_SQL, (task_key, ))
 
 	def amend_task(self, task_key, finish_code, finish_log):
 		if self.verbose:
@@ -344,12 +415,12 @@ class QueueDB:
 		if error_code is not None:
 			assert isinstance(error_code, int)
 
-		self.cursor.execute(UPDATE_AMEND_TASK_SQL, (finish_code, finish_log_str, access_token, ad_count, paging_cursor, error_code, task_key,))
+		self.cursor.execute(UPDATE_AMEND_TASK_SQL, (finish_code, finish_log_str, access_token, ad_count, paging_cursor, error_code, task_key, ))
 
 	def get_active_task_count(self):
 		if self.verbose:
 			print("[QueueDB] Counting active tasks...")
-		self.cursor.execute("SELECT * FROM {};".format(TASK_COUNT))
+		self.cursor.execute("SELECT * FROM {};".format(ACTIVE_TASK_COUNT))
 		one_row = self.cursor.fetchone()
 		task_count = one_row["task_count"]
 		if self.verbose:
@@ -359,7 +430,7 @@ class QueueDB:
 	def get_next_active_task(self):
 		if self.verbose:
 			print("[QueueDB] Getting the next active task...")
-		self.cursor.execute("SELECT * FROM {} LIMIT 1;".format(NEXT_TASK))
+		self.cursor.execute("SELECT * FROM {};".format(NEXT_TASK))
 		one_row = self.cursor.fetchone()
 		if self.verbose:
 			print("    Got task #{}".format(one_row["task_key"]))
@@ -377,7 +448,7 @@ class QueueDB:
 	def get_task_as_dict(self, task_key):
 		if self.verbose:
 			print("[QueueDB] Getting task #{}...".format(task_key))
-		self.cursor.execute("SELECT * FROM {} WHERE task_key = ?".format(TABLE_NAME), (task_key,))
+		self.cursor.execute("SELECT * FROM {} WHERE task_key = ?".format(TABLE_NAME), (task_key, ))
 		one_row = self.cursor.fetchone()
 		task = dict(zip(one_row.keys(), one_row))
 		return task

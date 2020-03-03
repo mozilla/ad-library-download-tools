@@ -11,5 +11,5 @@ parser = argparse.ArgumentParser(
 parser.add_argument("app_secret", help = "Facebook add secret", type = str)
 args = parser.parse_args()
 
-tokens_manager = facebook_utils.TokensManager()
-tokens_manager.set_app_secret(args.app_secret)
+token_manager = facebook_utils.TokenManager()
+token_manager.set_app_secret(args.app_secret)

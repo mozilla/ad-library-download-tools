@@ -11,5 +11,5 @@ parser = argparse.ArgumentParser(
 parser.add_argument("short_lived_token", help = "short-lived user access token", type = str)
 args = parser.parse_args()
 
-tokens_manager = facebook_utils.TokensManager()
-tokens_manager.generate_user_access_token(args.short_lived_token)
+token_manager = facebook_utils.TokenManager()
+token_manager.generate_user_access_token(args.short_lived_token)
