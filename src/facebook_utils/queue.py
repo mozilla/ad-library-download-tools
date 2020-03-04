@@ -25,23 +25,11 @@ class QueueManager:
 			task = None
 		self._db.close()
 		if self.verbose:
-			print("[QueueManager] Retrieved next task (#{})".format(task if "task_key" in task else None))
+			if task is None:
+				print("[QueueManager] No active tasks.")
+			else:
+				print("[QueueManager] Retrieved task #{} (next active task)".format(task["task_key"]))
 		return task
-
-	def before_task(self):
-		self._db.open()
-
-	def run_start_task(self, task_key):
-		self._db.start_task(task_key)
-
-	def run_finish_task(self, task_key):
-		self._db.finish_task(task_key)
-
-	def run_amend_task(self, task_key):
-		self._db.amend_task(task_key)
-
-	def after_task(self):
-		self._db.close()
 
 	def amend_task(self, task_key, finish_code, finish_log):
 		self._db.open()

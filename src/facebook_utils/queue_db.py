@@ -121,6 +121,8 @@ where task_key = ?
 ;""".format(table = TABLE_NAME)
 
 UPDATE_RESTART_TASK_SQL = """UPDATE {table} SET
+	is_task_started = 0,
+	is_task_finished = 0,
 	is_task_cancelled = 0
 where task_key = ?
 ;""".format(table = TABLE_NAME)
@@ -395,6 +397,12 @@ class QueueDB:
 		assert isinstance(task_key, int)
 		self.cursor.execute(UPDATE_CANCEL_TASK_SQL, (task_key, ))
 
+	def restart_task(self, task_key):
+		if self.verbose:
+			print("[QueueDB] Restarting task #{}...".format(task_key))
+		assert isinstance(task_key, int)
+		self.cursor.execute(UPDATE_RESTART_TASK_SQL, (task_key, ))
+	
 	def amend_task(self, task_key, finish_code, finish_log):
 		if self.verbose:
 			print("[QueueDB] Amending task #{} with logging information...".format(task_key))

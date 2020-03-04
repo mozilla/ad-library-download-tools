@@ -57,7 +57,7 @@ class TaskManager:
 					advertisers.append(row[0])
 		return advertisers
 
-	def create_experiment(self, experiment_type, experiment_priority = None):
+	def create_experiment(self, experiment_type, opt_last_n_days = None, experiment_priority = None):
 		assert isinstance(experiment_type, str)
 		config = configparser.ConfigParser()
 		config.read(TASK_CONFIG_FILENAME)
@@ -77,6 +77,9 @@ class TaskManager:
 		countries_per_split = config.getint(experiment_section, "countries_per_split")
 		advertisers_per_split = config.getint(experiment_section, "advertisers_per_split")
 		search_by_advertisers = config.getboolean(experiment_section, "search_by_advertisers")
+		
+		if last_n_days is not None:
+			last_n_days = opt_last_n_days
 
 		root_folder = config.get(experiment_section, "root_folder") if config.has_option(experiment_section, "root_folder") else Constants.DATA_PATH
 		now = datetime.now()
