@@ -8,7 +8,7 @@ import urllib.parse
 DASH = "--------------------------------------------------------------------------------"
 URL_BASE = "https://graph.facebook.com/v4.0/ads_archive"
 
-class FacebookAPI:
+class APIHelper:
 	def __init__(self, verbose = False):
 		self.verbose = verbose
 	
@@ -106,8 +106,8 @@ class FacebookAPI:
 				"response_error": None,
 			}
 
-	def parse_results(self, this_task, access_token, results):
-		response_error = results["response_error"]
+	def parse_response(self, this_task, access_token, response):
+		response_error = response["response_error"]
 		
 		# Connection error
 		if response_error is not None:
@@ -121,13 +121,13 @@ class FacebookAPI:
 			finish_log["continuation"] = this_task["continuation"].copy()
 			print()
 			print(DASH)
-			print("[facebook-api] EXCEPTION: Requests connection error")
+			print("[APIHelper] EXCEPTION: Requests connection error")
 			print(DASH)
 			print()
 			return (finish_code, finish_log)
 		
 		# Received an HTML document instead of a JSON object
-		response_html = results["response_html"]
+		response_html = response["response_html"]
 		if response_html is not None:
 			ad_count = 0
 			finish_code = -10002
@@ -139,12 +139,12 @@ class FacebookAPI:
 			finish_log["continuation"] = this_task["continuation"].copy()
 			print()
 			print(DASH)
-			print("[facebook-api] EXCEPTION: Received an HTML document instead of a JSON object")
+			print("[APIHelper] EXCEPTION: Received an HTML document instead of a JSON object")
 			print(DASH)
 			print()
 			return (finish_code, finish_log)
 
-		response_body = results["response_body"]
+		response_body = response["response_body"]
 		finish_log = self._parse_response_body(response_body)
 		finish_log["access_token"] = access_token
 
@@ -160,7 +160,7 @@ class FacebookAPI:
 
 				print()
 				print(DASH)
-				print("[facebook-api] DATA: Received a page of {:,} ads ({:,} total ads)".format(finish_log["ad_count"], finish_log["continuation"]["total_ad_count"]))
+				print("[APIHelper] DATA: Received a page of {:,} ads ({:,} total ads)".format(finish_log["ad_count"], finish_log["continuation"]["total_ad_count"]))
 				print(DASH)
 				print()
 			
@@ -172,7 +172,7 @@ class FacebookAPI:
 
 				print()
 				print(DASH)
-				print("[facebook-api] DATA: Received final page of {:,} ads ({:,} total ads)".format(finish_log["ad_count"], finish_log["continuation"]["total_ad_count"]))
+				print("[APIHelper] DATA: Received final page of {:,} ads ({:,} total ads)".format(finish_log["ad_count"], finish_log["continuation"]["total_ad_count"]))
 				print(DASH)
 				print()
 		
@@ -186,7 +186,7 @@ class FacebookAPI:
 			
 				print()
 				print(DASH)
-				print("[facebook-api] ERROR {}: {}".format(finish_log["error_code"], finish_log["error_message"]))
+				print("[APIHelper] ERROR {}: {}".format(finish_log["error_code"], finish_log["error_message"]))
 				print(DASH)
 				print()
 			
@@ -196,7 +196,7 @@ class FacebookAPI:
 				
 				print()
 				print(DASH)
-				print("[facebook-api] UNKNOWN ERROR")
+				print("[APIHelper] UNKNOWN ERROR")
 				print(DASH)
 				print()
 

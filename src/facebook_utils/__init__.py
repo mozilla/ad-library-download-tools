@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from .facebook_api import FacebookAPI
+from .api_helper import APIHelper
 from .queue_db import QueueDB
 from .queue import QueueManager
 from .rate_limit_db import RateLimitDB

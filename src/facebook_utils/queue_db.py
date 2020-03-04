@@ -19,8 +19,9 @@ STARTED_TASKS = "started_tasks"
 FINISHED_TASKS = "finished_tasks"
 FAILED_TASKS = "failed_tasks"
 CANCELLED_TASKS = "cancelled_tasks"
-NEXT_TASK = "next_task"
 ACTIVE_TASK_COUNT = "active_task_count"
+NEXT_ACTIVE_TASK = "next_active_task"
+ANY_TASK = "any_task"
 
 # CANCELLED - (*, *, *, 1)
 #   Any normal task can be manually cancelled by setting cancelled = 1.
@@ -209,16 +210,16 @@ CREATE_FAILED_TASKS_VIEW_SQL = """CREATE VIEW {view} AS
 	ORDER BY creation_timestamp DESC
 ;""".format(table = TABLE_NAME, view = FAILED_TASKS)
 
-CREATE_NEXT_TASK_VIEW_SQL = """CREATE VIEW {view} AS
+CREATE_ACTIVE_TASK_COUNT_VIEW_SQL = """CREATE VIEW {view} AS
+	SELECT COUNT(*) AS task_count FROM {table}
+;""".format(table = ACTIVE_TASKS, view = ACTIVE_TASK_COUNT)
+
+CREATE_NEXT_ACTIVE_TASK_VIEW_SQL = """CREATE VIEW {view} AS
 	SELECT * FROM {table}
 	WHERE is_task_cancelled = 0 AND is_task_started = 0 AND is_task_finished = 0
 	ORDER BY task_priority DESC, creation_timestamp ASC
 	LIMIT 1
-;""".format(table = TABLE_NAME, view = NEXT_TASK)
-
-CREATE_ACTIVE_TASK_COUNT_VIEW_SQL = """CREATE VIEW {view} AS
-	SELECT COUNT(*) AS task_count FROM {table}
-;""".format(table = ACTIVE_TASKS, view = ACTIVE_TASK_COUNT)
+;""".format(table = TABLE_NAME, view = NEXT_ACTIVE_TASK)
 
 CREATE_EXPERIMENT_REPORTS_VIEW_SQL = """CREATE VIEW experiment_reports AS
 	SELECT
@@ -305,8 +306,8 @@ class QueueDB:
 		self.cursor.execute(CREATE_STARTED_TASKS_VIEW_SQL)
 		print(CREATE_FINISHED_TASKS_VIEW_SQL)
 		self.cursor.execute(CREATE_FINISHED_TASKS_VIEW_SQL)
-		print(CREATE_NEXT_TASK_VIEW_SQL)
-		self.cursor.execute(CREATE_NEXT_TASK_VIEW_SQL)
+		print(CREATE_NEXT_ACTIVE_TASK_VIEW_SQL)
+		self.cursor.execute(CREATE_NEXT_ACTIVE_TASK_VIEW_SQL)
 		print(CREATE_ACTIVE_TASK_COUNT_VIEW_SQL)
 		self.cursor.execute(CREATE_ACTIVE_TASK_COUNT_VIEW_SQL)
 		print(CREATE_EXPERIMENT_REPORTS_VIEW_SQL)
@@ -397,7 +398,6 @@ class QueueDB:
 	def amend_task(self, task_key, finish_code, finish_log):
 		if self.verbose:
 			print("[QueueDB] Amending task #{} with logging information...".format(task_key))
-
 		assert isinstance(task_key, int)
 		assert isinstance(finish_code, int)
 
@@ -430,12 +430,22 @@ class QueueDB:
 	def get_next_active_task(self):
 		if self.verbose:
 			print("[QueueDB] Getting the next active task...")
-		self.cursor.execute("SELECT * FROM {};".format(NEXT_TASK))
+		self.cursor.execute("SELECT task_key FROM {};".format(NEXT_ACTIVE_TASK))
 		one_row = self.cursor.fetchone()
+		task_key = one_row["task_key"]
 		if self.verbose:
-			print("    Got task #{}".format(one_row["task_key"]))
-			self._print_task(one_row)
-		next_task = {
+			print("    Next active task is task #{}".format(task_key))
+		task = self.get_task(task_key)
+		return task
+
+	def get_task(self, task_key):
+		if self.verbose:
+			print("[QueueDB] Getting task #{}...".format(task_key))
+		assert isinstance(task_key, int)
+		
+		self.cursor.execute("SELECT * FROM {} WHERE task_key = ?".format(TABLE_NAME), (task_key, ))
+		one_row = self.cursor.fetchone()
+		task = {
 			"task_key": one_row["task_key"],
 			"experiment_spec": self._deserialize_json(one_row["experiment_spec"]),
 			"split_spec": self._deserialize_json(one_row["split_spec"]),
@@ -443,11 +453,13 @@ class QueueDB:
 			"attempt_spec": self._deserialize_json(one_row["attempt_spec"]),
 			"continuation": self._deserialize_json(one_row["continuation"]),
 		}
-		return next_task
-
+		return task
+		
 	def get_task_as_dict(self, task_key):
 		if self.verbose:
-			print("[QueueDB] Getting task #{}...".format(task_key))
+			print("[QueueDB] Getting task #{} as a dict...".format(task_key))
+		assert isinstance(task_key, int)
+
 		self.cursor.execute("SELECT * FROM {} WHERE task_key = ?".format(TABLE_NAME), (task_key, ))
 		one_row = self.cursor.fetchone()
 		task = dict(zip(one_row.keys(), one_row))

@@ -12,6 +12,7 @@ CANCEL = "cancel"
 RESTART = "restart"
 COUNT = "count"
 NEXT = "next"
+GET = "get"
 CREATE = "create"
 
 EXPERIMENT_TYPES = ["us", "uk", "ca", "de", "eu"]
@@ -22,7 +23,7 @@ def print_json(label, data):
 	print()
 
 parser = argparse.ArgumentParser()
-parser.add_argument("command", choices = [START, FINISH, CANCEL, RESTART, COUNT, NEXT, CREATE], type = str)
+parser.add_argument("command", choices = [START, FINISH, CANCEL, RESTART, COUNT, NEXT, GET, CREATE], type = str)
 parser.add_argument("value", help = "task_key or number of records", type = int, nargs = "?")
 args = parser.parse_args()
 
@@ -54,6 +55,10 @@ if command == RESTART:
 if command == COUNT:
 	task_count = db.get_active_task_count()
 	print("Active tasks = {}".format(task_count))
+if command == GET:
+	task_key = args.value
+	task = db.get_task(task_key)
+	print_json("task", task)
 if command == NEXT:
 	task_count = db.get_active_task_count()
 	if task_count > 0:
@@ -64,9 +69,9 @@ if command == NEXT:
 
 # Insert into database
 if command == CREATE:
-	rows = min(10, args.value)
+	rows = min(10, args.value) if args.value is not None else random.randint(1, 10)
 	for row in range(0, rows):
-		experiment_type = EXPERIMENT_TYPES[random.randint(0, len(EXPERIMENT_TYPES))]
+		experiment_type = EXPERIMENT_TYPES[random.randint(0, len(EXPERIMENT_TYPES) - 1)]
 		task_manager = facebook_utils.TaskManager(verbose = True)
 		experiment_spec = task_manager.create_experiment(experiment_type)
 		split_specs = task_manager.create_splits(experiment_spec)
