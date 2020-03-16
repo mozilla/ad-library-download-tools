@@ -9,7 +9,7 @@ from typing import NamedTuple
 
 # Constants for the rate limit database
 DB_FOLDER = Constants.DB_PATH
-DB_FILENAME = Constants.RATE_LIMIT_DB_FILENAME
+DB_FILENAME = Constants.FACEBOOK_RATE_LIMIT_DB_FILENAME
 
 # SQL database constants
 TABLE_NAME = "request_timestamps"

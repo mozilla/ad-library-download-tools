@@ -9,7 +9,7 @@ import sqlite3
 
 # Constants for the queue database
 DB_FOLDER = Constants.DB_PATH
-DB_FILENAME = Constants.QUEUE_DB_FILENAME
+DB_FILENAME = Constants.FACEBOOK_QUEUE_DB_FILENAME
 
 # SQL database constants
 TABLE_NAME = "all_tasks_table"

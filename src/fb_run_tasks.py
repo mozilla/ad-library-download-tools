@@ -15,6 +15,7 @@ token_manager = facebook_utils.TokenManager(verbose = True)
 task_manager = facebook_utils.TaskManager(verbose = True)
 queue_manager = facebook_utils.QueueManager(verbose = True)
 rate_limit_manager = facebook_utils.RateLimitManager(verbose = True)
+downloads_db = facebook_utils.DownloadsDB(verbose = True)
 
 for iter in range(0, MAX_ITERS):
 
@@ -42,8 +43,9 @@ for iter in range(0, MAX_ITERS):
 		rate_limit_manager.after_search()
 		
 		# Save downloaded data.
-		# TODO
-		print(finish_code, finish_log)
+		downloads_db.open()
+		downloads_db.insert(queue_manager.get_task_as_dict(task_key), url, response)
+		downloads_db.close()
 		
 		# Schedule a new task, if the download task is not completed.
 		next_task = task_manager.continue_task(task, finish_code, finish_log)

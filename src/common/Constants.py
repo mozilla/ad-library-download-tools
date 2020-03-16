@@ -2,7 +2,10 @@
 
 PREF_PATH = "../prefs"
 DB_PATH = "../db"
-DATA_PATH = "../data"
+DOWNLOADS_PATH = "../downloads"
+EXPORTS_PATH = "../exports"
 
-RATE_LIMIT_DB_FILENAME = "rate_limit.sqlite"
-QUEUE_DB_FILENAME = "queue.sqlite"
+FACEBOOK_RATE_LIMIT_DB_FILENAME = "facebook_rate_limit.sqlite"
+FACEBOOK_QUEUE_DB_FILENAME = "facebook_queue.sqlite"
+FACEBOOK_DOWNLOADS_DB_FILENAME = "facebook_downloads.sqlite"
+FACEBOOK_EXPORTS_DB_V1_FILENAME = "facebook_exports_v1.sqlite"

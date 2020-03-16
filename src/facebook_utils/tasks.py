@@ -81,11 +81,11 @@ class TaskManager:
 		if last_n_days is not None:
 			last_n_days = opt_last_n_days
 
-		root_folder = config.get(experiment_section, "root_folder") if config.has_option(experiment_section, "root_folder") else Constants.DATA_PATH
+		root_folder = config.get(experiment_section, "root_folder") if config.has_option(experiment_section, "root_folder") else Constants.DOWNLOADS_PATH
 		now = datetime.now()
 		timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
 		experiment_key = experiment_type.lower()
-		experiment_folder = "{}/facebook--{}--{}".format(root_folder, experiment_type.lower(), timestamp)
+		experiment_folder = "facebook/{}/{}".format(experiment_key.lower(), timestamp)
 
 		ad_fields = ad_fields.split(",")
 		countries = countries.split(",")
