@@ -18,7 +18,7 @@ DB_FILENAME = Constants.FACEBOOK_EXPORTS_DB_V1_FILENAME
 TABLE_NAME = "all_ads"
 
 # SQL statements
-CREATE_ALL_ADS_TABLE_SQL = """CREATE TABLE "{table}" (
+CREATE_ALL_ADS_TABLE_SQL = """CREATE TABLE IF NOT EXISTS "{table}" (
 	"key" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
 	"task_key" INTEGER NOT NULL,
 	"page_index" INTEGER NOT NULL,
@@ -52,21 +52,21 @@ CREATE_ALL_ADS_TABLE_SQL = """CREATE TABLE "{table}" (
 	"region_distribution" TEXT
 );""".format(table = TABLE_NAME)
 
-CREATE_ALL_CURRENCIES_TABLE_SQL = """CREATE TABLE "all_currencies" (
+CREATE_ALL_CURRENCIES_TABLE_SQL = """CREATE TABLE IF NOT EXISTS "all_currencies" (
 	"key" INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	"from_currency" TEXT NOT NULL,
 	"to_currency" TEXT NOT NULL,
 	"multiplier" REAL NOT NULL
 );"""
 
-CREATE_ALL_DATES_TABLE_SQL = """CREATE TABLE "all_dates" (
+CREATE_ALL_DATES_TABLE_SQL = """CREATE TABLE IF NOT EXISTS "all_dates" (
 	"key" INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	"start_date" DATETIME,
 	"end_date" DATETIME,
 	"label" TEXT
 );"""
 
-CREATE_CLEAN_IMPRESSIONS_VIEW_SQL = """CREATE VIEW clean_impressions_view AS
+CREATE_CLEAN_IMPRESSIONS_VIEW_SQL = """CREATE VIEW IF NOT EXISTS clean_impressions_view AS
 	SELECT
 		key,
 		CASE WHEN high_impressions IS NULL
@@ -77,7 +77,7 @@ CREATE_CLEAN_IMPRESSIONS_VIEW_SQL = """CREATE VIEW clean_impressions_view AS
 	FROM {table}
 ;""".format(table = TABLE_NAME)
 
-CREATE_CLEAN_SPEND_VIEW_SQL = """CREATE VIEW clean_spend_view AS
+CREATE_CLEAN_SPEND_VIEW_SQL = """CREATE VIEW IF NOT EXISTS clean_spend_view AS
 	SELECT
 		key,
 		CASE WHEN high_spend IS NULL
@@ -88,7 +88,7 @@ CREATE_CLEAN_SPEND_VIEW_SQL = """CREATE VIEW clean_spend_view AS
 	FROM {table}
 ;""".format(table = TABLE_NAME)
 
-CREATE_CLEAN_SPEND_IN_USD_VIEW_SQL = """CREATE VIEW clean_spend_in_USD_view AS
+CREATE_CLEAN_SPEND_IN_USD_VIEW_SQL = """CREATE VIEW IF NOT EXISTS clean_spend_in_USD_view AS
 	SELECT
 		all_ads.key,
 		low_spend * multiplier AS low_spend_in_USD,
@@ -100,7 +100,7 @@ CREATE_CLEAN_SPEND_IN_USD_VIEW_SQL = """CREATE VIEW clean_spend_in_USD_view AS
 	WHERE all_currencies.to_currency = 'USD'
 ;""".format(table = TABLE_NAME)
 
-CREATE_CLEAN_SPEND_IN_EUR_VIEW_SQL = """CREATE VIEW clean_spend_in_EUR_view AS
+CREATE_CLEAN_SPEND_IN_EUR_VIEW_SQL = """CREATE VIEW IF NOT EXISTS clean_spend_in_EUR_view AS
 	SELECT
 		all_ads.key,
 		low_spend * multiplier AS low_spend_in_EUR,
@@ -112,7 +112,7 @@ CREATE_CLEAN_SPEND_IN_EUR_VIEW_SQL = """CREATE VIEW clean_spend_in_EUR_view AS
 	WHERE all_currencies.to_currency = 'EUR'
 ;""".format(table = TABLE_NAME)
 
-CREATE_CLEAN_SPEND_IN_GBP_VIEW_SQL = """CREATE VIEW clean_spend_in_GBP_view AS
+CREATE_CLEAN_SPEND_IN_GBP_VIEW_SQL = """CREATE VIEW IF NOT EXISTS clean_spend_in_GBP_view AS
 	SELECT
 		all_ads.key,
 		low_spend * multiplier AS low_spend_in_GBP,
@@ -124,7 +124,7 @@ CREATE_CLEAN_SPEND_IN_GBP_VIEW_SQL = """CREATE VIEW clean_spend_in_GBP_view AS
 	WHERE all_currencies.to_currency = 'GBP'
 ;""".format(table = TABLE_NAME)
 
-CREATE_CLEAN_AD_DELIVERY_VIEW_SQL = """CREATE VIEW clean_ad_delivery_view AS
+CREATE_CLEAN_AD_DELIVERY_VIEW_SQL = """CREATE VIEW IF NOT EXISTS clean_ad_delivery_view AS
 	SELECT
 		key,
 		CASE WHEN ((ad_delivery_stop_time IS NULL) OR (ad_delivery_stop_time > download_time))
@@ -140,7 +140,7 @@ CREATE_CLEAN_AD_DELIVERY_VIEW_SQL = """CREATE VIEW clean_ad_delivery_view AS
 	INNER JOIN global_stats
 ;""".format(table = TABLE_NAME)
 
-CREATE_CLEAN_AD_DELIVERY_DURATION_VIEW_SQL = """CREATE VIEW clean_ad_delivery_duration_view AS
+CREATE_CLEAN_AD_DELIVERY_DURATION_VIEW_SQL = """CREATE VIEW IF NOT EXISTS clean_ad_delivery_duration_view AS
 	SELECT
 		all_ads.key,
 		ad_delivery_start_timestamp,
@@ -151,7 +151,7 @@ CREATE_CLEAN_AD_DELIVERY_DURATION_VIEW_SQL = """CREATE VIEW clean_ad_delivery_du
 	INNER JOIN clean_ad_delivery_view ON all_ads.key = clean_ad_delivery_view.key
 ;""".format(table = TABLE_NAME)
 
-CREATE_CLEAN_DATES_VIEW_SQL = """CREATE VIEW clean_dates_view AS
+CREATE_CLEAN_DATES_VIEW_SQL = """CREATE VIEW IF NOT EXISTS clean_dates_view AS
 	SELECT
 		key,
 		CASE WHEN start_date IS NULL
@@ -167,7 +167,7 @@ CREATE_CLEAN_DATES_VIEW_SQL = """CREATE VIEW clean_dates_view AS
 	INNER JOIN global_stats
 ;"""
 
-CLEAN_CLEAN_OVERLAPS_VIEW_SQL = """CREATE VIEW clean_ad_delivery_duration_overlaps_view AS
+CLEAN_CLEAN_OVERLAPS_VIEW_SQL = """CREATE VIEW IF NOT EXISTS clean_ad_delivery_duration_overlaps_view AS
 	SELECT
 		ad_key,
 		date_key,
@@ -202,7 +202,7 @@ CLEAN_CLEAN_OVERLAPS_VIEW_SQL = """CREATE VIEW clean_ad_delivery_duration_overla
 	ORDER BY date_key ASC, ad_delivery_overlap_fraction DESC
 ;"""
 
-CREATE_ADVERTISER_REPORT_SQL = """CREATE VIEW advertiser_report AS
+CREATE_ADVERTISER_REPORT_SQL = """CREATE VIEW IF NOT EXISTS advertiser_report AS
 	SELECT
 		all_ads.page_id,
 		page_name,
@@ -222,7 +222,7 @@ CREATE_ADVERTISER_REPORT_SQL = """CREATE VIEW advertiser_report AS
 	ORDER BY total_high_impressions_capped DESC, total_high_impressions_is_capped DESC, total_low_impressions DESC
 ;"""
 
-CREATE_ADVERTISER_REPORT_BY_DATES_SQL = """CREATE VIEW advertiser_report_by_dates AS
+CREATE_ADVERTISER_REPORT_BY_DATES_SQL = """CREATE VIEW IF NOT EXISTS advertiser_report_by_dates AS
 	SELECT
 		all_ads.page_id,
 		page_name,
@@ -278,14 +278,30 @@ INSERT_ALL_DATES_TABLE_SQL = """INSERT OR IGNORE INTO all_dates (
 	?, ?, ?
 );"""
 
-CREATE_AD_ARCHIVE_ID_INDEX_SQL = """CREATE UNIQUE INDEX {table}__ad_archive_id__index ON {table} (ad_archive_id ASC);""".format(table = TABLE_NAME)
-CREATE_PAGE_ID_INDEX_SQL = """CREATE INDEX {table}__page_id__index ON {table} (page_id ASC);""".format(table = TABLE_NAME)
+CREATE_AD_ARCHIVE_ID_INDEX_SQL = """CREATE UNIQUE INDEX IF NOT EXISTS {table}__ad_archive_id__index ON {table} (ad_archive_id ASC);""".format(table = TABLE_NAME)
+CREATE_PAGE_ID_INDEX_SQL = """CREATE INDEX IF NOT EXISTS {table}__page_id__index ON {table} (page_id ASC);""".format(table = TABLE_NAME)
 
-CREATE_FROM_CURRENCY_INDEX_SQL = """CREATE UNIQUE INDEX all_currencies__index ON all_currencies (to_currency ASC, from_currency ASC);"""
+CREATE_FROM_CURRENCY_INDEX_SQL = """CREATE UNIQUE INDEX IF NOT EXISTS all_currencies__index ON all_currencies (to_currency ASC, from_currency ASC);"""
+
+CREATE_ALL_LOG_FILES_TABLE_SQL = """CREATE TABLE IF NOT EXISTS "all_log_files" (
+	"key" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+	"log_file" TEXT NOT NULL UNIQUE
+);"""
+
+SELECT_ALL_LOG_FILES_SQL = """SELECT log_file FROM all_log_files;"""
+INSERT_LOG_FILE_SQL = """INSERT OR IGNORE INTO all_log_files (
+	log_file
+) VALUES (
+	?
+)""";
 
 TABLE_EXISTS_SQL = """SELECT COUNT(*) = 1 FROM "sqlite_master" WHERE "type" = "table" AND "name" = "{table}";""".format(table = TABLE_NAME)
 
 POST_PROCESSING_SQL = [
+"""DROP TABLE IF EXISTS advertiser_funding_entity_table;
+""",
+"""DROP INDEX IF EXISTS advertiser_funding_entity_table__index;
+""",
 """CREATE TABLE advertiser_funding_entity_table AS
 	SELECT DISTINCT page_id, funding_entity
 	FROM all_ads
@@ -293,14 +309,21 @@ POST_PROCESSING_SQL = [
 """,
 """CREATE INDEX advertiser_funding_entity_table__index ON advertiser_funding_entity_table (page_id ASC);
 """,
+"""DROP TABLE IF EXISTS advertiser_funding_entities_table;
+""",
+"""DROP INDEX IF EXISTS advertiser_funding_entities_table__index;
+""",
 """CREATE TABLE advertiser_funding_entities_table AS
 	SELECT page_id, GROUP_CONCAT(funding_entity, " || ") AS funding_entities
 	FROM advertiser_funding_entity_table
 	GROUP BY page_id
 	ORDER BY page_id;
 """,
-"""CREATE UNIQUE INDEX advertiser_funding_entities_table__index ON advertiser_funding_entities_table (page_id ASC);""",
-"""CREATE TABLE global_stats AS
+"""CREATE UNIQUE INDEX advertiser_funding_entities_table__index ON advertiser_funding_entities_table (page_id ASC);
+""",
+"""DROP TABLE IF EXISTS global_stats;
+""",
+"""CREATE TABLE IF NOT EXISTS global_stats AS
 	SELECT
 		CURRENT_TIMESTAMP AS download_time,
 		JULIANDAY(CURRENT_TIMESTAMP) AS download_timestamp;
@@ -308,14 +331,18 @@ POST_PROCESSING_SQL = [
 ]
 
 class ExportsDBv1:
-	def __init__(self, experiment_key, db_folder = None, verbose = True):
+	def __init__(self, experiment_key, db_folder = None, verbose = True, is_cumulative = True):
 		assert isinstance(experiment_key, str)
 		assert isinstance(verbose, bool)
 		self.experiment_key = experiment_key
 		self.verbose = verbose
-		now = datetime.now()
-		timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
-		self.db_folder = os.path.join(DB_FOLDER if db_folder is None else db_folder, self.experiment_key, timestamp)
+		self.is_cumulative = is_cumulative
+		if self.is_cumulative:
+			self.db_folder = os.path.join(DB_FOLDER if db_folder is None else db_folder, self.experiment_key)
+		else:
+			now = datetime.now()
+			timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
+			self.db_folder = os.path.join(DB_FOLDER if db_folder is None else db_folder, self.experiment_key, timestamp)
 		self.db_path = os.path.join(self.db_folder, DB_FILENAME)
 		self.connection = None
 		self.cursor = None
@@ -364,6 +391,8 @@ class ExportsDBv1:
 		self.cursor.execute(CREATE_ALL_CURRENCIES_TABLE_SQL)
 		print(CREATE_ALL_DATES_TABLE_SQL)
 		self.cursor.execute(CREATE_ALL_DATES_TABLE_SQL)
+		print(CREATE_ALL_LOG_FILES_TABLE_SQL)
+		self.cursor.execute(CREATE_ALL_LOG_FILES_TABLE_SQL)
 
 	def _create_indexes(self):
 		if self.verbose:
@@ -415,7 +444,15 @@ class ExportsDBv1:
 	def _deserialize_json(self, blob):
 		return json.loads(blob)
 
-	def insert_ads(self, task_key, page_index, page_subindex, ad):
+	def _get_all_log_files(self):
+		self.cursor.execute(SELECT_ALL_LOG_FILES_SQL)
+		rows = self.cursor.fetchall()
+		return [row[0] for row in rows]
+
+	def _insert_log_file(self, filename):
+		self.cursor.execute(INSERT_LOG_FILE_SQL, (filename, ))
+
+	def _insert_ads(self, task_key, page_index, page_subindex, ad):
 		assert isinstance(task_key, int)
 		assert isinstance(page_index, int)
 		assert isinstance(page_subindex, int)
@@ -497,6 +534,8 @@ class ExportsDBv1:
 		self.open()
 		self.insert_currencies()
 		self.insert_dates()
+		existing_filenames = frozenset(self._get_all_log_files())
+
 		folder = os.path.join(Constants.EXPORTS_PATH, "data")
 		task_key_regex = re.compile(r"task\-0+(\d+)\.json")
 		page_index = 0
@@ -504,13 +543,17 @@ class ExportsDBv1:
 		filenames = glob(glob_pattern)
 		filenames.sort()
 		for filename in filenames:
-			print("filename =", filename)
-			task_key = int(task_key_regex.search(filename).group(1))
-			with open(filename) as f:
-				response = json.load(f)
-				if "data" in response:
-					data = response["data"]
-					for page_subindex, d in enumerate(data):
-						self.insert_ads(task_key, page_index, page_subindex, d)
-					page_index += 1
+			if filename in existing_filenames:
+				print("skipping file: ", filename)
+			else:
+				print("exporting file: ", filename)
+				task_key = int(task_key_regex.search(filename).group(1))
+				with open(filename) as f:
+					response = json.load(f)
+					if "data" in response:
+						data = response["data"]
+						for page_subindex, d in enumerate(data):
+							self._insert_ads(task_key, page_index, page_subindex, d)
+						page_index += 1
+				self._insert_log_file(filename)
 		self.close()
