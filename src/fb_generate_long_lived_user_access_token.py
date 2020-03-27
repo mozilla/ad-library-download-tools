@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import facebook_utils
-
 import argparse
 
 parser = argparse.ArgumentParser(
