@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from datetime import datetime
 import json
@@ -69,7 +69,7 @@ class APIHelper:
 		request_timestamp = datetime.now()
 		try:
 			r = requests.get(url)
-		except requests.exceptions.ConnectionError as e:
+		except (requests.exceptions.ConnectionError, ConnectionResetError) as e:
 			return {
 				"request_timestamp": request_timestamp,
 				"response_timestamp": None,
