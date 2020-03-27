@@ -7,6 +7,7 @@ from datetime import datetime
 import json
 import os
 import requests
+import stat
 import urllib.parse
 
 # Configuration files
@@ -53,6 +54,7 @@ class TokenManager:
 		config.set(APP_SECTION, APP_ID_OPTION, app_id)
 		with open(filename, 'w') as f:
 			config.write(f)
+		os.chmod(filename, stat.S_IRUSR | stat.S_IWUSR)
 		if self.verbose:
 			print("[TokenManager] Wrote app id to file: {}".format(filename))
 
@@ -65,6 +67,7 @@ class TokenManager:
 		config.set(APP_SECTION, APP_SECRET_OPTION, app_secret)
 		with open(filename, 'w') as f:
 			config.write(f)
+		os.chmod(filename, stat.S_IRUSR | stat.S_IWUSR)
 		if self.verbose:
 			print("[TokenManager] Wrote app secret to file: {}".format(filename))
 
@@ -79,6 +82,7 @@ class TokenManager:
 			print("[TokenManager] [ERROR] Cannot read app id from file:", filename)
 			print()
 			raise
+		os.chmod(filename, stat.S_IRUSR | stat.S_IWUSR)
 		if self.verbose:
 			print("[TokenManager] Read app id from file: {}".format(filename))
 		return app_id
@@ -94,6 +98,7 @@ class TokenManager:
 			print("[TokenManager] [ERROR] Cannot read app secret from file:", filename)
 			print()
 			raise
+		os.chmod(filename, stat.S_IRUSR | stat.S_IWUSR)
 		if self.verbose:
 			print("[TokenManager] Read app secret from file: {}".format(filename))
 		return app_secret
@@ -124,6 +129,7 @@ class TokenManager:
 		# Write to config file
 		with open(filename, "w") as f:
 			config.write(f)
+		os.chmod(filename, stat.S_IRUSR | stat.S_IWUSR)
 		if self.verbose:
 			print("[TokenManager] Wrote user access tokens to file: {}".format(filename))
 
@@ -138,6 +144,7 @@ class TokenManager:
 			print("[TokenManager] [ERROR] Cannot read the latest long-lived user access token from file:", filename)
 			print()
 			raise
+		os.chmod(filename, stat.S_IRUSR | stat.S_IWUSR)
 		if self.verbose:
 			print("[TokenManager] Read the latest long-lived user access token from file: {}".format(filename))
 		return app_secret
