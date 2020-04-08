@@ -7,3 +7,4 @@ __pycache__
 /downloads/*
 /exports/*
 /external_files/*
+!/external_files/currencies.json
