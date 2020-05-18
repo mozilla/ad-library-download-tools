@@ -1,167 +1,169 @@
 #!/usr/bin/env python3
 
-from sqlalchemy import Column, Integer, String, Date
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Table, Column, Integer, String, Date, MetaData, UniqueConstraint
 
-Base = declarative_base()
+class GoogleAdLibraryDB:
+	def __init__(self, engine):
+		metadata = MetaData()
+		self._define_tables(metadata)
+		metadata.create_all(engine)
 
-class AdvertiserDeclaredStats(Base):
-	__tablename__ = "advertiser_declared_stats"
-	key = Column(Integer, primary_key = True)
-	advertiser_id = Column(String)
-	advertiser_declared_name = Column(String)
-	advertiser_declared_regulatory_id = Column(String)
-	advertiser_declared_scope = Column(String)
+	def _define_tables(self, metadata):
+		self.advertiser_declared_stats_table = Table("advertiser_declared_stats", metadata,
+			Column("key", Integer, primary_key = True),
+			Column("advertiser_id", String, unique = True),
+			Column("advertiser_declared_name", String),
+			Column("advertiser_declared_regulatory_id", String),
+			Column("advertiser_declared_scope", String),
+		)
 
-class AdvertiserStats(Base):
-	__tablename__ = "advertiser_stats"
-	key = Column(Integer, primary_key = True)
-	advertiser_id = Column(String, unique = True)
-	advertiser_name = Column(String)
-	public_ids_list = Column(String)
-	regions = Column(String)
-	elections = Column(String)
-	total_creatives = Column(Integer)
-	spend_usd = Column(Integer)
-	spend_eur = Column(Integer)
-	spend_inr = Column(Integer)
-	spend_bgn = Column(Integer)
-	spend_hrk = Column(Integer)
-	spend_czk = Column(Integer)
-	spend_dkk = Column(Integer)
-	spend_huf = Column(Integer)
-	spend_pln = Column(Integer)
-	spend_ron = Column(Integer)
-	spend_sek = Column(Integer)
-	spend_gbp = Column(Integer)
+		self.advertiser_stats_table = Table("advertiser_stats", metadata,
+			Column("key", Integer, primary_key = True),
+			Column("advertiser_id", String, unique = True),
+			Column("advertiser_name", String),
+			Column("public_ids_list", String),
+			Column("regions", String),
+			Column("elections", String),
+			Column("total_creatives", Integer),
+			Column("spend_usd", Integer),
+			Column("spend_eur", Integer),
+			Column("spend_inr", Integer),
+			Column("spend_bgn", Integer),
+			Column("spend_hrk", Integer),
+			Column("spend_czk", Integer),
+			Column("spend_dkk", Integer),
+			Column("spend_huf", Integer),
+			Column("spend_pln", Integer),
+			Column("spend_ron", Integer),
+			Column("spend_sek", Integer),
+			Column("spend_gbp", Integer),
+		)
 
-class AdvertiserWeeklySpend(Base):
-	__tablename__ = "advertiser_weekly_spend"
-	key = Column(Integer, primary_key = True)
-	advertiser_id = Column(String)
-	advertiser_name = Column(String)
-	election_cycle = Column(String)
-	week_start_date = Column(Date)
-	spend_usd = Column(Integer)
-	spend_eur = Column(Integer)
-	spend_inr = Column(Integer)
-	spend_bgn = Column(Integer)
-	spend_hrk = Column(Integer)
-	spend_czk = Column(Integer)
-	spend_dkk = Column(Integer)
-	spend_huf = Column(Integer)
-	spend_pln = Column(Integer)
-	spend_ron = Column(Integer)
-	spend_sek = Column(Integer)
-	spend_gbp = Column(Integer)
-	UniqueConstraint("advertiser_id", "week_start_date")
+		self.advertiser_weekly_spend_table = Table("advertiser_weekly_spend", metadata,
+			Column("key", Integer, primary_key = True),
+			Column("advertiser_id", String, index = True),
+			Column("advertiser_name", String),
+			Column("election_cycle", String),
+			Column("week_start_date", Date),
+			Column("spend_usd", Integer),
+			Column("spend_eur", Integer),
+			Column("spend_inr", Integer),
+			Column("spend_bgn", Integer),
+			Column("spend_hrk", Integer),
+			Column("spend_czk", Integer),
+			Column("spend_dkk", Integer),
+			Column("spend_huf", Integer),
+			Column("spend_pln", Integer),
+			Column("spend_ron", Integer),
+			Column("spend_sek", Integer),
+			Column("spend_gbp", Integer),
+			UniqueConstraint("advertiser_id", "week_start_date"),
+		)
 
-class CampaignTargeting(Base):
-	__tablename__ = "campaign_targeting"
-	key = Column(Integer, primary_key = True)
-	campaign_id = Column(String, unique = True)
-	age_targeting = Column(String)
-	gender_targeting = Column(String)
-	geo_targeting_included = Column(String)
-	geo_targeting_excluded = Column(String)
-	start_date = Column(Date)
-	end_date = Column(Date)
-	ads_list = Column(String)
-	advertiser_id = Column(String)
-	advertiser_name = Column(String)
+		self.campaign_targeting_table = Table("campaign_targeting", metadata,
+			Column("key", Integer, primary_key = True),
+			Column("campaign_id", String, unique = True),
+			Column("age_targeting", String),
+			Column("gender_targeting", String),
+			Column("geo_targeting_included", String),
+			Column("geo_targeting_excluded", String),
+			Column("start_date", Date),
+			Column("end_date", Date),
+			Column("ads_list", String),
+			Column("advertiser_id", String, index = True),
+			Column("advertiser_name", String),
+		)
 
-class CreativeStats(Base):
-	__tablename__ = "creative_stats"
-	key = Column(Integer, primary_key = True)
-	ad_id = Column(String, unique = True)
-	ad_url = Column(String)
-	ad_type = Column(String)
-	regions = Column(String)
-	advertiser_id = Column(String)
-	advertiser_name = Column(String)
-	ad_campaigns_list = Column(String)
-	date_range_start = Column(Date)
-	date_range_end = Column(Date)
-	num_of_days = Column(Integer)
-	impressions = Column(String)
-	spend_usd = Column(String)
-	age_targeting = Column(String)
-	gender_targeting = Column(String)
-	geo_targeting_included = Column(String)
-	geo_targeting_excluded = Column(String)
-	first_served_timestamp = Column(Date)
-	last_served_timestamp = Column(Date)
-	spend_range_min_usd = Column(Integer)
-	spend_range_max_usd = Column(Integer)
-	spend_range_min_eur = Column(Integer)
-	spend_range_max_eur = Column(Integer)
-	spend_range_min_inr = Column(Integer)
-	spend_range_max_inr = Column(Integer)
-	spend_range_min_bgn = Column(Integer)
-	spend_range_max_bgn = Column(Integer)
-	spend_range_min_hrk = Column(Integer)
-	spend_range_max_hrk = Column(Integer)
-	spend_range_min_czk = Column(Integer)
-	spend_range_max_czk = Column(Integer)
-	spend_range_min_dkk = Column(Integer)
-	spend_range_max_dkk = Column(Integer)
-	spend_range_min_huf = Column(Integer)
-	spend_range_max_huf = Column(Integer)
-	spend_range_min_pln = Column(Integer)
-	spend_range_max_pln = Column(Integer)
-	spend_range_min_ron = Column(Integer)
-	spend_range_max_ron = Column(Integer)
-	spend_range_min_sek = Column(Integer)
-	spend_range_max_sek = Column(Integer)
-	spend_range_min_gbp = Column(Integer)
-	spend_range_max_gbp = Column(Integer)
+		self.creative_stats_table = Table("creative_stats", metadata, 
+			Column("key", Integer, primary_key = True),
+			Column("ad_id", String, index = True),
+			Column("ad_url", String),
+			Column("ad_type", String),
+			Column("regions", String),
+			Column("advertiser_id", String, index = True),
+			Column("advertiser_name", String),
+			Column("ad_campaigns_list", String),
+			Column("date_range_start", Date),
+			Column("date_range_end", Date),
+			Column("num_of_days", Integer),
+			Column("impressions", String),
+			Column("spend_usd", String),
+			Column("age_targeting", String),
+			Column("gender_targeting", String),
+			Column("geo_targeting_included", String),
+			Column("geo_targeting_excluded", String),
+			Column("first_served_timestamp", Date),
+			Column("last_served_timestamp", Date),
+			Column("spend_range_min_usd", Integer),
+			Column("spend_range_max_usd", Integer),
+			Column("spend_range_min_eur", Integer),
+			Column("spend_range_max_eur", Integer),
+			Column("spend_range_min_inr", Integer),
+			Column("spend_range_max_inr", Integer),
+			Column("spend_range_min_bgn", Integer),
+			Column("spend_range_max_bgn", Integer),
+			Column("spend_range_min_hrk", Integer),
+			Column("spend_range_max_hrk", Integer),
+			Column("spend_range_min_czk", Integer),
+			Column("spend_range_max_czk", Integer),
+			Column("spend_range_min_dkk", Integer),
+			Column("spend_range_max_dkk", Integer),
+			Column("spend_range_min_huf", Integer),
+			Column("spend_range_max_huf", Integer),
+			Column("spend_range_min_pln", Integer),
+			Column("spend_range_max_pln", Integer),
+			Column("spend_range_min_ron", Integer),
+			Column("spend_range_max_ron", Integer),
+			Column("spend_range_min_sek", Integer),
+			Column("spend_range_max_sek", Integer),
+			Column("spend_range_min_gbp", Integer),
+			Column("spend_range_max_gbp", Integer),
+			UniqueConstraint("ad_id", "advertiser_id"),
+		)
 
-class GeoSpend(Base):
-	__tablename__ = "geo_spend"
-	key = Column(Integer, primary_key = True)
-	country = Column(String)
-	country_subdivision_primary = Column(String)
-	country_subdivision_secondary = Column(String)
-	spend_usd = Column(Integer)
-	spend_eur = Column(Integer)
-	spend_inr = Column(Integer)
-	spend_bgn = Column(Integer)
-	spend_hrk = Column(Integer)
-	spend_czk = Column(Integer)
-	spend_dkk = Column(Integer)
-	spend_huf = Column(Integer)
-	spend_pln = Column(Integer)
-	spend_ron = Column(Integer)
-	spend_sek = Column(Integer)
-	spend_gbp = Column(Integer)
-	UniqueConstraint("country", "country_subdivision_primary", "country_subdivision_secondary")
+		self.geo_spend_table = Table("geo_spend", metadata, 
+			Column("key", Integer, primary_key = True),
+			Column("country", String),
+			Column("country_subdivision_primary", String),
+			Column("country_subdivision_secondary", String),
+			Column("spend_usd", Integer),
+			Column("spend_eur", Integer),
+			Column("spend_inr", Integer),
+			Column("spend_bgn", Integer),
+			Column("spend_hrk", Integer),
+			Column("spend_czk", Integer),
+			Column("spend_dkk", Integer),
+			Column("spend_huf", Integer),
+			Column("spend_pln", Integer),
+			Column("spend_ron", Integer),
+			Column("spend_sek", Integer),
+			Column("spend_gbp", Integer),
+			UniqueConstraint("country", "country_subdivision_primary", "country_subdivision_secondary"),
+		)
 
-class LastUpdated(Base):
-	__tablename__ = "last_updated"
-	key = Column(Integer, primary_key = True)
-	report_data_updated_date = Column(Date)
+		self.last_updated_table = Table("last_updated", metadata,
+			Column("key", Integer, primary_key = True),
+			Column("report_data_updated_date", Date),
+		)
 
-class TopKeywordsHistory(Base):
-	__tablename__ = "top_keywords_history"
-	key = Column(Integer, primary_key = True)
-	election_cycle = Column(String)
-	report_date = Column(Date)
-	keyword_1 = Column(String)
-	spend_usd_1 = Column(Integer)
-	keyword_2 = Column(String)
-	spend_usd_2 = Column(Integer)
-	keyword_3 = Column(String)
-	spend_usd_3 = Column(Integer)
-	keyword_4 = Column(String)
-	spend_usd_4 = Column(Integer)
-	keyword_5 = Column(String)
-	spend_usd_5 = Column(Integer)
-	keyword_6 = Column(String)
-	spend_usd_6 = Column(Integer)
-	region = Column(String)
-	elections = Column(String)
-	UniqueConstraint("election_cycle", "report_date")
-
-def google_ad_library_create_tables(engine):
-	Base.metadata.create_all(engine)
+		self.top_keywords_history_table = Table("top_keywords_history", metadata,
+			Column("key", Integer, primary_key = True),
+			Column("election_cycle", String),
+			Column("report_date", Date),
+			Column("keyword_1", String),
+			Column("spend_usd_1", Integer),
+			Column("keyword_2", String),
+			Column("spend_usd_2", Integer),
+			Column("keyword_3", String),
+			Column("spend_usd_3", Integer),
+			Column("keyword_4", String),
+			Column("spend_usd_4", Integer),
+			Column("keyword_5", String),
+			Column("spend_usd_5", Integer),
+			Column("keyword_6", String),
+			Column("spend_usd_6", Integer),
+			Column("region", String),
+			Column("elections", String),
+			UniqueConstraint("election_cycle", "report_date"),
+		)
 
