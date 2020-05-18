@@ -19,18 +19,20 @@ ZIP_FILENAME = "google-political-ads-transparency-bundle.zip"
 CSV_FOLDER = "google-political-ads-transparency-bundle"
 DB_FILENAME = "google_ad_library.sqlite"
 
-class GoogleAdReportDatabaseHelper:
-	def __init__(self, verbose = True, echo = False):
+class GoogleAdReportDownloadHelper:
+	def __init__(self, verbose = True, echo = False, timestamp = None):
 		self.verbose = verbose
 		self.echo = echo
+		self.timestamp = timestamp
 		self.download_folder = None
 		self._init_download_folder()
 		self._init_db_session()
 		
 	def _init_download_folder(self):
 		if self.download_folder is None:
-			timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-			self.download_folder = os.path.join(Constants.DOWNLOADS_PATH, "google", timestamp)
+			if self.timestamp is None:
+				self.timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+			self.download_folder = os.path.join(Constants.DOWNLOADS_PATH, "google", self.timestamp)
 		os.makedirs(self.download_folder, exist_ok = True)
 
 	def _init_db_session(self):
@@ -53,23 +55,23 @@ class GoogleAdReportDatabaseHelper:
 	def download_political_ad_report(self):
 		if self.verbose:
 			timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-			print("[GoogleAdReportDatabaseHelper] {:s}".format(timestamp))
-			print("[GoogleAdReportDatabaseHelper] Downloading ad transparency report...")
+			print("[AdReport] {:s}".format(timestamp))
+			print("[AdReport] Downloading ad transparency report...")
 
 		filename = self._get_download_filename()
 		urllib.request.urlretrieve(AD_REPORT_URL, filename = filename)
 
 		if self.verbose:
 			timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-			print("[GoogleAdReportDatabaseHelper] Downloaded ad transparency report: {:s}".format(filename))
-			print("[GoogleAdReportDatabaseHelper] {:s}".format(timestamp))
+			print("[AdReport] Downloaded ad transparency report: {:s}".format(filename))
+			print("[AdReport] {:s}".format(timestamp))
 			print()
 
 	def unzip_political_ad_report(self):
 		if self.verbose:
 			timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-			print("[GoogleAdReportDatabaseHelper] {:s}".format(timestamp))
-			print("[GoogleAdReportDatabaseHelper] Unzipping ad transparency report...")
+			print("[AdReport] {:s}".format(timestamp))
+			print("[AdReport] Unzipping ad transparency report...")
 
 		filename = self._get_download_filename()
 		with zipfile.ZipFile(filename) as f:
@@ -77,20 +79,20 @@ class GoogleAdReportDatabaseHelper:
 
 		if self.verbose:
 			timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-			print("[GoogleAdReportDatabaseHelper] Unzipped ad transparency report: {:s}".format(self._get_unzipped_folder()))
-			print("[GoogleAdReportDatabaseHelper] {:s}".format(timestamp))
+			print("[AdReport] Unzipped ad transparency report: {:s}".format(self._get_unzipped_folder()))
+			print("[AdReport] {:s}".format(timestamp))
 			print()
 
 	def _start_table_extraction(self, filename):
 		if self.verbose:
 			timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-			print("[GoogleAdReportDatabaseHelper] {:s}".format(timestamp))
-			print("[GoogleAdReportDatabaseHelper] Extracting file: {:s}".format(filename))
+			print("[AdReport] {:s}".format(timestamp))
+			print("[AdReport] Extracting file: {:s}".format(filename))
 
 	def _finish_table_extraction(self, filename):
 		if self.verbose:
 			timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-			print("[GoogleAdReportDatabaseHelper] {:s}".format(timestamp))
+			print("[AdReport] {:s}".format(timestamp))
 			print()
 	
 	def _get_header(self, row):

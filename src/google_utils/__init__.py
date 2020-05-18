@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
 
-from .google_ad_report_helper import GoogleAdReportHelper
-from .google_cloud_database_helper import GoogleCloudDatabaseHelper
-from .google_ad_report_database_helper import GoogleAdReportDatabaseHelper
+from .google_big_query_download_helper import GoogleBigQueryDownloadHelper
+from .google_ad_report_download_helper import GoogleAdReportDownloadHelper

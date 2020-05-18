@@ -2,5 +2,5 @@
 
 import google_utils
 
-helper = google_utils.GoogleCloudDatabaseHelper()
+helper = google_utils.GoogleBigQueryDownloadHelper()
 helper.download_all_tables()

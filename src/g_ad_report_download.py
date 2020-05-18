@@ -2,7 +2,7 @@
 
 import google_utils
 
-helper = google_utils.GoogleAdReportDatabaseHelper()
+helper = google_utils.GoogleAdReportDownloadHelper()
 helper.download_political_ad_report()
 helper.unzip_political_ad_report()
 helper.extract_all_tables()
