@@ -2,22 +2,20 @@
 
 from common import Constants
 
-import sqlalchemy
-from sqlalchemy.orm import sessionmaker
-
 import csv
 from datetime import datetime
 import os
+import sqlalchemy
+from sqlalchemy.orm import sessionmaker
 import urllib.request
 import zipfile
 
-from .google_ad_library_tables import AdvertiserDeclaredStats, AdvertiserStats, AdvertiserWeeklySpend, CampaignTargeting, CreativeStats, GeoSpend, LastUpdated, TopKeywordsHistory
-from .google_ad_library_tables import google_ad_library_create_tables
+from .google_ad_library_db import AdvertiserDeclaredStats, AdvertiserStats, AdvertiserWeeklySpend, CampaignTargeting, CreativeStats, GeoSpend, LastUpdated, TopKeywordsHistory
+from .google_ad_library_db import google_ad_library_create_tables
 
 AD_REPORT_URL = "https://storage.googleapis.com/transparencyreport/google-political-ads-transparency-bundle.zip"
 ZIP_FILENAME = "google-political-ads-transparency-bundle.zip"
 CSV_FOLDER = "google-political-ads-transparency-bundle"
-DB_FILENAME = "google_ad_library.sqlite"
 
 class GoogleAdReportDownloadHelper:
 	def __init__(self, verbose = True, echo = False, timestamp = None):
@@ -36,7 +34,7 @@ class GoogleAdReportDownloadHelper:
 		os.makedirs(self.download_folder, exist_ok = True)
 
 	def _init_db_session(self):
-		db_url = "sqlite:///{}".format(os.path.abspath(os.path.join(self.download_folder, DB_FILENAME)))
+		db_url = "sqlite:///{}".format(os.path.abspath(os.path.join(self.download_folder, Constants.GOOGLE_AD_LIBRARY_DB_FILENAME)))
 		db_engine = sqlalchemy.create_engine(db_url, echo = self.echo)
 		google_ad_library_create_tables(db_engine)
 		Session = sessionmaker(bind = db_engine)

@@ -16,7 +16,7 @@ class AdvertiserDeclaredStats(Base):
 class AdvertiserStats(Base):
 	__tablename__ = "advertiser_stats"
 	key = Column(Integer, primary_key = True)
-	advertiser_id = Column(String)
+	advertiser_id = Column(String, unique = True)
 	advertiser_name = Column(String)
 	public_ids_list = Column(String)
 	regions = Column(String)
@@ -54,11 +54,12 @@ class AdvertiserWeeklySpend(Base):
 	spend_ron = Column(Integer)
 	spend_sek = Column(Integer)
 	spend_gbp = Column(Integer)
+	UniqueConstraint("advertiser_id", "week_start_date")
 
 class CampaignTargeting(Base):
 	__tablename__ = "campaign_targeting"
 	key = Column(Integer, primary_key = True)
-	campaign_id = Column(String)
+	campaign_id = Column(String, unique = True)
 	age_targeting = Column(String)
 	gender_targeting = Column(String)
 	geo_targeting_included = Column(String)
@@ -72,7 +73,7 @@ class CampaignTargeting(Base):
 class CreativeStats(Base):
 	__tablename__ = "creative_stats"
 	key = Column(Integer, primary_key = True)
-	ad_id = Column(String)
+	ad_id = Column(String, unique = True)
 	ad_url = Column(String)
 	ad_type = Column(String)
 	regions = Column(String)
@@ -133,6 +134,7 @@ class GeoSpend(Base):
 	spend_ron = Column(Integer)
 	spend_sek = Column(Integer)
 	spend_gbp = Column(Integer)
+	UniqueConstraint("country", "country_subdivision_primary", "country_subdivision_secondary")
 
 class LastUpdated(Base):
 	__tablename__ = "last_updated"
@@ -158,6 +160,7 @@ class TopKeywordsHistory(Base):
 	spend_usd_6 = Column(Integer)
 	region = Column(String)
 	elections = Column(String)
+	UniqueConstraint("election_cycle", "report_date")
 
 def google_ad_library_create_tables(engine):
 	Base.metadata.create_all(engine)

@@ -9,3 +9,6 @@ FACEBOOK_RATE_LIMIT_DB_FILENAME = "facebook_rate_limit.sqlite"
 FACEBOOK_QUEUE_DB_FILENAME = "facebook_queue.sqlite"
 FACEBOOK_DOWNLOADS_DB_FILENAME = "facebook_downloads.sqlite"
 FACEBOOK_EXPORTS_DB_V1_FILENAME = "facebook_exports_v1.sqlite"
+
+GOOGLE_AD_LIBRARY_DB_FILENAME = "google_ad_library.sqlite"
+GOOGLE_AD_CREATIVES_DB_FILENAME = "google_ad_creatives.sqlite"
