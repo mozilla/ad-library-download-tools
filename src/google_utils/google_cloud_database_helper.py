@@ -18,6 +18,8 @@ GC_SCOPES = ["https://www.googleapis.com/auth/bigquery.readonly"]
 GC_POLITICAL_ADS_PATH = "bigquery-public-data.google_political_ads"
 GC_PAGE_SIZE = 10000
 
+DB_FILENAME = "google_ad_library.sqlite"
+
 class GoogleCloudDatabaseHelper:
 	def __init__(self, verbose = True, echo = False):
 		self.verbose = verbose
@@ -34,7 +36,7 @@ class GoogleCloudDatabaseHelper:
 		os.makedirs(self.download_folder, exist_ok = True)
 
 	def _init_db_session(self):
-		db_url = "sqlite:///{}/google_ad_library.sqlite".format(os.path.abspath(self.download_folder))
+		db_url = "sqlite:///{}".format(os.path.abspath(os.path.join(self.download_folder, DB_FILENAME)))
 		db_engine = sqlalchemy.create_engine(db_url, echo = self.echo)
 		google_ad_library_create_tables(db_engine)
 		Session = sessionmaker(bind = db_engine)
@@ -53,13 +55,13 @@ class GoogleCloudDatabaseHelper:
 	def _start_table_download(self, table):
 		if self.verbose:
 			timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-			print("[GCDatabaseHelper] Start = {:s}".format(timestamp))
-			print("[GCDatabaseHelper] Table = {:s}".format(table))
+			print("[GoogleCloudDatabaseHelper] Start = {:s}".format(timestamp))
+			print("[GoogleCloudDatabaseHelper] Table = {:s}".format(table))
 
 	def _finish_stable_download(self, table):
 		if self.verbose:
 			timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-			print("[GCDatabaseHelper] Finish = {:s}".format(timestamp))
+			print("[GoogleCloudDatabaseHelper] Finish = {:s}".format(timestamp))
 
 	def download_advertiser_declared_stats_table(self):
 		table = self._get_table_path("advertiser_declared_stats")
@@ -67,7 +69,7 @@ class GoogleCloudDatabaseHelper:
 		rows = self.gc_client.list_rows(table, page_size = GC_PAGE_SIZE)
 		for page in rows.pages:
 			if self.verbose:
-				print("[GCDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
+				print("[GoogleCloudDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
 			for row in page:
 				self.db_session.add(AdvertiserDeclaredStats(
 					advertiser_id = row.advertiser_id,
@@ -84,7 +86,7 @@ class GoogleCloudDatabaseHelper:
 		rows = self.gc_client.list_rows(table, page_size = GC_PAGE_SIZE)
 		for page in rows.pages:
 			if self.verbose:
-				print("[GCDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
+				print("[GoogleCloudDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
 			for row in page:
 				self.db_session.add(AdvertiserStats(
 					advertiser_id = row.advertiser_id,
@@ -115,7 +117,7 @@ class GoogleCloudDatabaseHelper:
 		rows = self.gc_client.list_rows(table, page_size = GC_PAGE_SIZE)
 		for page in rows.pages:
 			if self.verbose:
-				print("[GCDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
+				print("[GoogleCloudDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
 			for row in page:
 				self.db_session.add(AdvertiserWeeklySpend(
 					advertiser_id = row.advertiser_id,
@@ -144,7 +146,7 @@ class GoogleCloudDatabaseHelper:
 		rows = self.gc_client.list_rows(table, page_size = GC_PAGE_SIZE)
 		for page in rows.pages:
 			if self.verbose:
-				print("[GCDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
+				print("[GoogleCloudDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
 			for row in page:
 				self.db_session.add(CampaignTargeting(
 					campaign_id = row.campaign_id,
@@ -167,7 +169,7 @@ class GoogleCloudDatabaseHelper:
 		rows = self.gc_client.list_rows(table, page_size = GC_PAGE_SIZE)
 		for page in rows.pages:
 			if self.verbose:
-				print("[GCDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
+				print("[GoogleCloudDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
 			for row in page:
 				self.db_session.add(CreativeStats(
 					ad_id = row.ad_id,
@@ -222,7 +224,7 @@ class GoogleCloudDatabaseHelper:
 		rows = self.gc_client.list_rows(table, page_size = GC_PAGE_SIZE)
 		for page in rows.pages:
 			if self.verbose:
-				print("[GCDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
+				print("[GoogleCloudDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
 			for row in page:
 				self.db_session.add(GeoSpend(
 					country = row.country,
@@ -250,7 +252,7 @@ class GoogleCloudDatabaseHelper:
 		rows = self.gc_client.list_rows(table, page_size = GC_PAGE_SIZE)
 		for page in rows.pages:
 			if self.verbose:
-				print("[GCDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
+				print("[GoogleCloudDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
 			for row in page:
 				self.db_session.add(LastUpdated(
 					report_data_updated_date = row.report_data_updated_date
@@ -264,7 +266,7 @@ class GoogleCloudDatabaseHelper:
 		rows = self.gc_client.list_rows(table, page_size = GC_PAGE_SIZE)
 		for page in rows.pages:
 			if self.verbose:
-				print("[GCDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
+				print("[GoogleCloudDatabaseHelper] Page #{} ({} rows)".format(rows.page_number, rows.num_results))
 			for row in page:
 				self.db_session.add(TopKeywordsHistory(
 					election_cycle = row.election_cycle,
