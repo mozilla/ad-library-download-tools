@@ -17,7 +17,7 @@ GOOGLE_AD_CREATIVES_DB_FILENAME = "google_ad_creatives.sqlite"
 
 GOOGLE_WINDOW_WIDTH = 1280
 GOOGLE_WINDOW_HEIGHT = 1024
-GOOLGE_TEXT_AD_SCREENSHOTS = "screenshots-text-ad"
-GOOLGE_IMAGE_AD_SCREENSHOTS = "screenshots-image-ad"
-GOOLGE_VIDEO_AD_SCREENSHOTS = "screenshots-video-ad"
-GOOLGE_ERROR_SCREENSHOTS = "screenshots-error"
+GOOLGE_TEXT_AD_SCREENSHOTS = "screenshots/text-ads"
+GOOLGE_IMAGE_AD_SCREENSHOTS = "screenshots/image-ads"
+GOOLGE_VIDEO_AD_SCREENSHOTS = "screenshots/video-ads"
+GOOLGE_ERROR_SCREENSHOTS = "screenshots/errors"

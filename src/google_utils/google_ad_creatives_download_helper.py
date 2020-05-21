@@ -24,10 +24,11 @@ VIDEO_AD_TAG_NAME = "video-ad"
 AdInfo = namedtuple("AdInfo", ["id", "url", "type"])
 
 class GoogleAdCreativesDownloadHelper:
-	def __init__(self, verbose = True, echo = False, timestamp = None, shuffle = False):
+	def __init__(self, verbose = True, echo = False, timestamp = None, headless = False, shuffle = False):
 		self.verbose = verbose
 		self.echo = echo
 		self.timestamp = timestamp
+		self.headless = headless
 		self.shuffle = shuffle
 		self.download_folder = None
 		self.screenshot_text_ads_folder = None
@@ -70,7 +71,9 @@ class GoogleAdCreativesDownloadHelper:
 		timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
 		print("[AdCreatives] {:s}".format(timestamp))
 		print("[AdCreatives] Starting WebDriver...")
-		driver = webdriver.Firefox()
+		opts = webdriver.FirefoxOptions()
+		opts.headless = self.headless
+		driver = webdriver.Firefox(options = opts)
 		print()
 		return driver
 
@@ -127,8 +130,8 @@ class GoogleAdCreativesDownloadHelper:
 
 			try:
 				ad_elem = elem.find_element_by_tag_name(TEXT_AD_TAG_NAME)
-#				screenshot_path = os.path.join(self.screenshot_text_ads_folder, "{:s}.png".format(ad_info.id))
-#				elem.screenshot(os.path.abspath(screenshot_path))
+				screenshot_path = os.path.join(self.screenshot_text_ads_folder, "{:s}.png".format(ad_info.id))
+				elem.screenshot(os.path.abspath(screenshot_path))
 				ad_text = ad_elem.text
 				ad_html = ad_elem.get_attribute("outerHTML")
 				is_ad_found = True
@@ -234,13 +237,16 @@ class GoogleAdCreativesDownloadHelper:
 		if self.shuffle:
 			random.shuffle(remaining_ad_ids)
 		for i, ad_id in enumerate(remaining_ad_ids):
-			if self.verbose and i % 100 == 0:
+			if self.verbose and i % 1000 == 0:
 				timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
 				print("[AdCreatives] {:s}".format(timestamp))
 				print("Number of ads = {:,d} / {:,d}".format(i, len(remaining_ad_ids)))
 				print()
+				self._stop_webdriver(driver)
+				driver = self._start_webdriver()
+
 			self.download_ad_creative(driver, i, ad_id)
-			if i+1 >= 1000:
+			if i+1 >= 15000 * 4:
 				print()
 				break
 		self._stop_webdriver(driver)
