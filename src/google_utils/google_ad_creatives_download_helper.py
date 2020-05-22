@@ -15,21 +15,30 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 import sqlalchemy
 from sqlalchemy.sql import select, func
 
-TIMEOUT_MAX_SECS = 10
+TEXT_AD_TYPE = "Text"
+IMAGE_AD_TYPE = "Image"
+VIDEO_AD_TYPE = "Video"
+
+TIMEOUT_MAX_SECS = 5
 CREATIVE_WRAPPER_CLASS_NAME = "creative-wrapper"
+
 TEXT_AD_TAG_NAME = "text-ad"
-IMAGE_AD_TAG_NAME = "image-ad"
+
+IMAGE_AD_IFRAME_TAG_NAME = "iframe"
+IMAGE_AD_CONTAINER_ID = "google_image_div"
+IMAGE_AD_IMAGE_CLASS_NAME = "img_ad"
 VIDEO_AD_TAG_NAME = "video-ad"
 
 AdInfo = namedtuple("AdInfo", ["id", "url", "type"])
 
 class GoogleAdCreativesDownloadHelper:
-	def __init__(self, verbose = True, echo = False, timestamp = None, headless = False, shuffle = False):
+	def __init__(self, timestamp, headless = False, shuffle = False, echo = False, verbose = True):
 		self.verbose = verbose
 		self.echo = echo
 		self.timestamp = timestamp
 		self.headless = headless
 		self.shuffle = shuffle
+		self.driver = None
 		self.download_folder = None
 		self.screenshot_text_ads_folder = None
 		self.screenshot_image_ads_folder = None
@@ -41,8 +50,6 @@ class GoogleAdCreativesDownloadHelper:
 
 	def _init_download_folder(self):
 		if self.download_folder is None:
-			if self.timestamp is None:
-				self.timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 			self.download_folder = os.path.join(Constants.DOWNLOADS_PATH, Constants.GOOGLE_DOWNLOADS_FOLDER, self.timestamp)
 			self.screenshot_text_ads_folder = os.path.join(self.download_folder, Constants.GOOLGE_TEXT_AD_SCREENSHOTS)
 			self.screenshot_image_ads_folder = os.path.join(self.download_folder, Constants.GOOLGE_IMAGE_AD_SCREENSHOTS)
@@ -68,29 +75,39 @@ class GoogleAdCreativesDownloadHelper:
 		self.db = GoogleAdCreativesDB(engine)
 
 	def _start_webdriver(self):
-		timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-		print("[AdCreatives] {:s}".format(timestamp))
-		print("[AdCreatives] Starting WebDriver...")
-		opts = webdriver.FirefoxOptions()
-		opts.headless = self.headless
-		driver = webdriver.Firefox(options = opts)
-		print()
-		return driver
+		if self.driver is None:
+			print("[AdCreatives] {:s}".format(self._timestamp()))
+			print("[AdCreatives] Starting WebDriver...")
+			opts = webdriver.FirefoxOptions()
+			opts.headless = self.headless
+			self.driver = webdriver.Firefox(options = opts)
+			print("[AdCreatives] Started WebDriver")
+			self.driver.set_window_size(Constants.GOOGLE_WINDOW_WIDTH, Constants.GOOGLE_WINDOW_HEIGHT)
+			print("[AdCreatives] Set driver to {:d}px by {:d}px".format(Constants.GOOGLE_WINDOW_WIDTH, Constants.GOOGLE_WINDOW_HEIGHT))
+			print()
+	
+	def _timestamp(self):
+		return datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
 
-	def _stop_webdriver(self, driver):
-		timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-		print("[AdCreatives] {:s}".format(timestamp))
-		print("[AdCreatives] Stopping WebDriver...")
-		driver.close()
-		print()
+	def _stop_webdriver(self):
+		if self.driver is not None:
+			print("[AdCreatives] {:s}".format(self._timestamp()))
+			print("[AdCreatives] Stopping WebDriver...")
+			self.driver.close()
+			self.driver = None
+			print("[AdCreatives] Stopped WebDriver")
+			print()
 
-	def get_remaining_ad_ids(self):
+	def _get_remaining_ad_ids(self, ad_type = None):
 		if self.verbose:
-			timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-			print("[AdCreatives] {:s}".format(timestamp))
+			print("[AdCreatives] {:s}".format(self._timestamp()))
 			print("[AdCreatives] Counting ads...")
 
-		all_ad_ids = [row[0] for row in self.library_conn.execute(select([self.library_db.creative_stats_table.c.ad_id]).distinct())]
+		if ad_type is None:
+			s = select([self.library_db.creative_stats_table.c.ad_id]).distinct()
+		else:
+			s = select([self.library_db.creative_stats_table.c.ad_id]).where(self.library_db.creative_stats_table.c.ad_type == ad_type).distinct()
+		all_ad_ids = [row[0] for row in self.library_conn.execute(s)]
 		all_set = frozenset(all_ad_ids)
 		downloaded_ad_ids = [row[0] for row in self.conn.execute(select([self.db.ad_content.c.ad_id]).distinct())]
 		downloaded_set = frozenset(downloaded_ad_ids)
@@ -105,7 +122,7 @@ class GoogleAdCreativesDownloadHelper:
 
 		return remaining_ad_ids
 
-	def get_ad_info(self, ad_id):
+	def _get_ad_info(self, ad_id):
 		s = select([self.library_db.creative_stats_table]).where(self.library_db.creative_stats_table.c.ad_id == ad_id)
 		row = self.library_conn.execute(s).fetchone()
 		ad_info = AdInfo(
@@ -115,37 +132,42 @@ class GoogleAdCreativesDownloadHelper:
 		)
 		return ad_info
 
-	def download_text_ad(self, driver, ad_info):
+	def _download_text_ad(self, ad_info, screenshot_success = False, screenshot_error = True):
 		ad_text = None
 		ad_html = None
 		screenshot_path = None
-		is_skipped = False
 		is_url_accessed = False
 		is_ad_found = False
 
-		driver.get(ad_info.url)
+		self.driver.get(ad_info.url)
+		is_url_accessed = True
+		print("Opened webpage.")
 		try:
-			elem = WebDriverWait(driver, TIMEOUT_MAX_SECS).until(expected_conditions.presence_of_element_located((By.CLASS_NAME, CREATIVE_WRAPPER_CLASS_NAME)))
-			is_url_accessed = True
-
+			elem = WebDriverWait(self.driver, TIMEOUT_MAX_SECS).until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, CREATIVE_WRAPPER_CLASS_NAME)))
+			print("Waited and located creative wrapper.")
 			try:
 				ad_elem = elem.find_element_by_tag_name(TEXT_AD_TAG_NAME)
-				screenshot_path = os.path.join(self.screenshot_text_ads_folder, "{:s}.png".format(ad_info.id))
-				elem.screenshot(os.path.abspath(screenshot_path))
+				print("Located text ad element.")
+				if screenshot_success:
+					screenshot_path = os.path.join(self.screenshot_text_ads_folder, "{:s}.png".format(ad_info.id))
+					ad_elem.screenshot(os.path.abspath(screenshot_path))
+					print("Took a screenshot.")
 				ad_text = ad_elem.text
 				ad_html = ad_elem.get_attribute("outerHTML")
 				is_ad_found = True
-				print("Extracted ad text and html content.")
+				print("Extracted text and html content of the text ad.")
 
 			except NoSuchElementException:
-				screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
-				elem.screenshot(os.path.abspath(screenshot_path))
-				print("Cannot locate the text ad in '{:s}' element.".format(TEXT_AD_TAG_NAME))
+				if screenshot_error:
+					screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
+					self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
+				print("Cannot locate text ad element.")
 
 		except TimeoutException:
-			screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
-			driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
-			print("Cannot download ad after waiting {:d} seconds".format(TIMEOUT_MAX_SECS))
+			if screenshot_error:
+				screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
+				self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
+			print("Cannot locate creative wrapper after waiting {:d} seconds".format(TIMEOUT_MAX_SECS))
 
 		self.conn.execute(self.db.ad_content.insert(), {
 			"ad_id": ad_info.id,
@@ -154,46 +176,84 @@ class GoogleAdCreativesDownloadHelper:
 			"ad_text": ad_text,
 			"ad_html": ad_html,
 			"screenshot_path": screenshot_path,
-			"is_skipped": False,
 			"is_url_accessed": is_url_accessed,
 			"is_ad_found": is_ad_found,
-			"timestamp": datetime.now(),
 		})
 		print()
 
-	def download_image_ad(self, driver, ad_info):
-		print("Skipping image ads.")
+	def _download_image_ad(self, ad_info, screenshot_success = False, screenshot_error = True):
+		image_url = None
+		screenshot_path = None
+		is_skipped = False
+		is_url_accessed = False
+		is_ad_found = False
+
+		self.driver.get(ad_info.url)
+		is_url_accessed = True
+		print("Opened webpage.")
+		try:
+			elem = WebDriverWait(self.driver, TIMEOUT_MAX_SECS).until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, CREATIVE_WRAPPER_CLASS_NAME)))
+			print("Waited and located creative wrapper.")
+			try:
+				WebDriverWait(self.driver, TIMEOUT_MAX_SECS).until(expected_conditions.frame_to_be_available_and_switch_to_it((By.TAG_NAME, IMAGE_AD_IFRAME_TAG_NAME)))
+				print("Switched to iframe containing image ad.")
+				try:
+					ad_elem = WebDriverWait(self.driver, TIMEOUT_MAX_SECS).until(expected_conditions.visibility_of_element_located((By.ID, IMAGE_AD_CONTAINER_ID)))
+					print("Waited and located image ad element.")
+					if screenshot_success:
+						screenshot_path = os.path.join(self.screenshot_image_ads_folder, "{:s}.png".format(ad_info.id))
+						ad_elem.screenshot(os.path.abspath(screenshot_path))
+						print("Took a screenshot.")
+					image_url = ad_elem.find_element_by_class_name(IMAGE_AD_IMAGE_CLASS_NAME).get_attribute("src")
+					image_html = ad_elem.get_attribute("outerHTML")
+					is_ad_found = True
+					print("Extracted image source URL of the image ad.")
+					
+				except TimeoutException:
+					if screenshot_error:
+						screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
+						self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
+					print("Cannot locate image ad element.")
+
+			except TimeoutException:
+				if screenshot_error:
+					screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
+					self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
+				print("Cannot locate iframe containing image ad.")
+
+		except TimeoutException:
+			if screenshot_error:
+				screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
+				self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
+			print("Cannot locate creative wrapper after waiting {:d} seconds".format(TIMEOUT_MAX_SECS))
+
 		self.conn.execute(self.db.ad_content.insert(), {
 			"ad_id": ad_info.id,
 			"ad_url": ad_info.url,
 			"ad_type": ad_info.type,
-			"ad_text": None,
-			"ad_html": None,
-			"screenshot_path": None,
-			"is_skipped": True,
-			"is_url_accessed": False,
-			"is_ad_found": False,
-			"timestamp": datetime.now(),
+			"image_url": image_url,
+			"image_html": image_html,
+			"screenshot_path": screenshot_path,
+			"is_url_accessed": is_url_accessed,
+			"is_ad_found": is_ad_found,
 		})
 		print()
 
-	def download_vidoe_ad(self, driver, ad_info):
+	def _download_vidoe_ad(self, ad_info, screenshot_success = False, screenshot_error = True):
 		print("Skipping video ads.")
 		self.conn.execute(self.db.ad_content.insert(), {
 			"ad_id": ad_info.id,
 			"ad_url": ad_info.url,
 			"ad_type": ad_info.type,
-			"ad_text": None,
-			"ad_html": None,
+			"video_url": None,
 			"screenshot_path": None,
 			"is_skipped": True,
 			"is_url_accessed": False,
 			"is_ad_found": False,
-			"timestamp": datetime.now(),
 		})
 		print()
 
-	def download_unknown_ad(self, driver, ad_info):
+	def _download_unknown_ad(self, ad_info, screenshot_success = False, screenshot_error = True):
 		print("Encountered unknown ad type: {:s}".format(ad_info.type))
 		self.conn.execute(self.db.ad_content.insert(), {
 			"ad_id": ad_info.id,
@@ -205,54 +265,57 @@ class GoogleAdCreativesDownloadHelper:
 			"is_skipped": True,
 			"is_url_accessed": False,
 			"is_ad_found": False,
-			"timestamp": datetime.now(),
 		})
 		print()
 
-	def download_ad_creative(self, driver, index, ad_id):
-		ad_info = self.get_ad_info(ad_id)
+	def _download_ad_creative(self, index, total_count, ad_id, screenshot_success = False, screenshot_error = True):
+		ad_info = self._get_ad_info(ad_id)
 
-		timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-		print("[AdCreatives] {:s}".format(timestamp))
-		print("[AdCreatives] Loading ad #{:d}: {:s} ({:s})".format(index + 1, ad_info.url, ad_info.type))
-		if ad_info.type == "Text":
-			self.download_text_ad(driver, ad_info)
-		elif ad_info.type == "Image":
-			self.download_image_ad(driver, ad_info)
-		elif ad_info.type == "Video":
-			self.download_vidoe_ad(driver, ad_info)
+		print("[AdCreatives] {:s}".format(self._timestamp()))
+		print("[AdCreatives] Downloading remaining ad {:,d} of {:,d}: {:s}...".format(index, total_count, ad_info.url))
+		if ad_info.type == TEXT_AD_TYPE:
+			self._download_text_ad(ad_info, screenshot_success = screenshot_success, screenshot_error = screenshot_error)
+		elif ad_info.type == IMAGE_AD_TYPE:
+			self._download_image_ad(ad_info, screenshot_success = screenshot_success, screenshot_error = screenshot_error)
+		elif ad_info.type == VIDEO_AD_TYPE:
+			self._download_vidoe_ad(ad_info, screenshot_success = screenshot_success, screenshot_error = screenshot_error)
 		else:
-			self.download_unknown_ad(driver, ad_info)
+			self._download_unknown_ad(ad_info, screenshot_success = screenshot_success, screenshot_error = screenshot_error)
 
-	def download_all_ad_creatives(self):
+	def download_ad_creatives(self, ad_type, limit, screenshot):
 		if self.verbose:
-			timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-			print("[AdCreatives] {:s}".format(timestamp))
-			print("[AdCreatives] Downloading all ad creatives...")
+			print("[AdCreatives] {:s}".format(self._timestamp()))
+			print("[AdCreatives] Downloading {:,d} ad creatives (type = {:s})...".format(limit, ad_type))
 			print()
 
-		driver = self._start_webdriver()
-		driver.set_window_size(Constants.GOOGLE_WINDOW_WIDTH, Constants.GOOGLE_WINDOW_HEIGHT)
-		remaining_ad_ids = self.get_remaining_ad_ids()
+		self._start_webdriver()
+		remaining_ad_ids = self._get_remaining_ad_ids(ad_type = ad_type)
 		if self.shuffle:
 			random.shuffle(remaining_ad_ids)
 		for i, ad_id in enumerate(remaining_ad_ids):
-			if self.verbose and i % 1000 == 0:
-				timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-				print("[AdCreatives] {:s}".format(timestamp))
-				print("Number of ads = {:,d} / {:,d}".format(i, len(remaining_ad_ids)))
+			if self.verbose and i % 100 == 0:
+				print("[AdCreatives] {:s}".format(self._timestamp()))
+				print("Number of remaining ads (type = {:s}) = {:,d} / {:,d}".format(ad_type, i + 1, len(remaining_ad_ids)))
 				print()
-				self._stop_webdriver(driver)
-				driver = self._start_webdriver()
-
-			self.download_ad_creative(driver, i, ad_id)
-			if i+1 >= 15000 * 4:
+			self._download_ad_creative(i + 1, len(remaining_ad_ids), ad_id, screenshot_success = screenshot)
+			if i + 1 >= limit:
 				print()
 				break
-		self._stop_webdriver(driver)
+			if i + 1 % 1000 == 0:
+				self._stop_webdriver()
+				self._start_webdriver()
+		self._stop_webdriver()
 
 		if self.verbose:
-			timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
-			print("[AdCreatives] Downloaded ad creative.")
-			print("[AdCreatives] {:s}".format(timestamp))
+			print("[AdCreatives] Downloaded {:,d} ad creatives (type = {:s})".format(limit, ad_type))
+			print("[AdCreatives] {:s}".format(self._timestamp()))
 			print()
+
+	def download_text_ads(self, limit, screenshot):
+		self.download_ad_creatives(TEXT_AD_TYPE, limit, screenshot)
+		
+	def download_image_ads(self, limit, screenshot):
+		self.download_ad_creatives(IMAGE_AD_TYPE, limit, screenshot)
+		
+	def download_video_ads(self, limit, screenshot):
+		self.download_ad_creatives(VIDEO_AD_TYPE, limit, screenshot)

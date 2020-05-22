@@ -23,7 +23,7 @@ class GoogleAdReportDownloadHelper:
 		self.download_folder = None
 		self._init_download_folder()
 		self._init_db()
-		
+
 	def _init_download_folder(self):
 		if self.download_folder is None:
 			if self.timestamp is None:
@@ -87,25 +87,25 @@ class GoogleAdReportDownloadHelper:
 			timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
 			print("[AdReport] {:s}".format(timestamp))
 			print()
-	
+
 	def _get_header(self, row):
 		header = {}
 		for i, field in enumerate(row):
 			header[field.lower()] = i
 		return header
-	
+
 	def _get_date(self, s):
 		if len(s) == 0:
 			return None
 		else:
 			return datetime.strptime(s, "%Y-%m-%d").date()
-	
+
 	def _get_timestamp(self, s):
 		if len(s) == 0:
 			return None
 		else:
 			return datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ")
-	
+
 	def extract_advertiser_declared_stats_table(self):
 		filename = self._get_unzipped_csv_filename("advertiser_declared_stats")
 		self._start_table_extraction(filename)

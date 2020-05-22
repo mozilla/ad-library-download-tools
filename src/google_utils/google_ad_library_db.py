@@ -78,7 +78,7 @@ class GoogleAdLibraryDB:
 			Column("key", Integer, primary_key = True),
 			Column("ad_id", String, index = True),
 			Column("ad_url", String),
-			Column("ad_type", String),
+			Column("ad_type", String, index = True),
 			Column("regions", String),
 			Column("advertiser_id", String, index = True),
 			Column("advertiser_name", String),
