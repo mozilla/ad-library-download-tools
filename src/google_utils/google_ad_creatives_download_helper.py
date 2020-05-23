@@ -14,20 +14,24 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 import sqlalchemy
 from sqlalchemy.sql import select, func
+import time
 
 TEXT_AD_TYPE = "Text"
 IMAGE_AD_TYPE = "Image"
 VIDEO_AD_TYPE = "Video"
 
-TIMEOUT_MAX_SECS = 5
+DRIVER_RESTART_PAGES = 100
+PAGE_LOAD_TIME_OUT_SECS = 30
+ELEMENT_TIMEOUT_SECS = 10
 CREATIVE_WRAPPER_CLASS_NAME = "creative-wrapper"
 
-TEXT_AD_TAG_NAME = "text-ad"
+TEXT_AD_CONTAINER_TAG_NAME = "text-ad"
 
 IMAGE_AD_IFRAME_TAG_NAME = "iframe"
 IMAGE_AD_CONTAINER_ID = "google_image_div"
-IMAGE_AD_IMAGE_CLASS_NAME = "img_ad"
-VIDEO_AD_TAG_NAME = "video-ad"
+IMAGE_AD_SRC_CLASS_NAME = "img_ad"
+
+VIDEO_AD_IFRAME_TAG_NAME = "iframe"
 
 AdInfo = namedtuple("AdInfo", ["id", "url", "type"])
 
@@ -138,36 +142,56 @@ class GoogleAdCreativesDownloadHelper:
 		screenshot_path = None
 		is_url_accessed = False
 		is_ad_found = False
+		is_unknown_error = False
 
-		self.driver.get(ad_info.url)
-		is_url_accessed = True
-		print("Opened webpage.")
+		self.driver.set_page_load_timeout(PAGE_LOAD_TIME_OUT_SECS)
 		try:
-			elem = WebDriverWait(self.driver, TIMEOUT_MAX_SECS).until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, CREATIVE_WRAPPER_CLASS_NAME)))
-			print("Waited and located creative wrapper.")
+			self.driver.get(ad_info.url)
+		except TimeoutException:
+			print("Cannot open webpage, after waiting up to {:d} seconds.".format(PAGE_LOAD_TIME_OUT_SECS))
+		except:
+			print("Unknown error when opening webpage.")
+			is_unknown_error = True
+		else:
+			print("Opened webpage.")
+			is_url_accessed = True
+			
 			try:
-				ad_elem = elem.find_element_by_tag_name(TEXT_AD_TAG_NAME)
-				print("Located text ad element.")
-				if screenshot_success:
-					screenshot_path = os.path.join(self.screenshot_text_ads_folder, "{:s}.png".format(ad_info.id))
-					ad_elem.screenshot(os.path.abspath(screenshot_path))
-					print("Took a screenshot.")
-				ad_text = ad_elem.text
-				ad_html = ad_elem.get_attribute("outerHTML")
-				is_ad_found = True
-				print("Extracted text and html content of the text ad.")
-
-			except NoSuchElementException:
+				elem = WebDriverWait(self.driver, ELEMENT_TIMEOUT_SECS).until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, CREATIVE_WRAPPER_CLASS_NAME)))
+			except TimeoutException:
+				print("Cannot locate creative wrapper, after waiting up to {:d} seconds.".format(ELEMENT_TIMEOUT_SECS))
 				if screenshot_error:
 					screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
 					self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
-				print("Cannot locate text ad element.")
+					print("Took a screenshot of the error.")
+			except:
+				print("Unknown error when locating creative wrapper.")
+				is_unknown_error = True
+			else:
+				print("Waited and located creative wrapper.")
+				
+				try:
+					ad_elem = elem.find_element_by_tag_name(TEXT_AD_CONTAINER_TAG_NAME)
+				except NoSuchElementException:
+					print("Cannot locate text ad container element, after waiting up to {:d} seconds.".format(ELEMENT_TIMEOUT_SECS))
+					if screenshot_error:
+						screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
+						self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
+						print("Took a screenshot of the error.")
+				except:
+					print("Unknown error when locating text ad container element.")
+					is_unknown_error = True
+				else:
+					print("Located text ad container element.")
+					ad_text = ad_elem.text
+					ad_html = ad_elem.get_attribute("outerHTML")
+					print("Extracted text and HTML from the text ad.")
+					if screenshot_success:
+						screenshot_path = os.path.join(self.screenshot_text_ads_folder, "{:s}.png".format(ad_info.id))
+						ad_elem.screenshot(os.path.abspath(screenshot_path))
+						print("Took a screenshot of the text ad.")
+					is_ad_found = True
 
-		except TimeoutException:
-			if screenshot_error:
-				screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
-				self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
-			print("Cannot locate creative wrapper after waiting {:d} seconds".format(TIMEOUT_MAX_SECS))
 
 		self.conn.execute(self.db.ad_content.insert(), {
 			"ad_id": ad_info.id,
@@ -180,52 +204,77 @@ class GoogleAdCreativesDownloadHelper:
 			"is_ad_found": is_ad_found,
 		})
 		print()
+		return is_unknown_error
 
 	def _download_image_ad(self, ad_info, screenshot_success = False, screenshot_error = True):
 		image_url = None
+		image_html = None
 		screenshot_path = None
-		is_skipped = False
 		is_url_accessed = False
 		is_ad_found = False
+		is_unknown_error = False
 
-		self.driver.get(ad_info.url)
-		is_url_accessed = True
-		print("Opened webpage.")
+		self.driver.set_page_load_timeout(PAGE_LOAD_TIME_OUT_SECS)
 		try:
-			elem = WebDriverWait(self.driver, TIMEOUT_MAX_SECS).until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, CREATIVE_WRAPPER_CLASS_NAME)))
-			print("Waited and located creative wrapper.")
-			try:
-				WebDriverWait(self.driver, TIMEOUT_MAX_SECS).until(expected_conditions.frame_to_be_available_and_switch_to_it((By.TAG_NAME, IMAGE_AD_IFRAME_TAG_NAME)))
-				print("Switched to iframe containing image ad.")
-				try:
-					ad_elem = WebDriverWait(self.driver, TIMEOUT_MAX_SECS).until(expected_conditions.visibility_of_element_located((By.ID, IMAGE_AD_CONTAINER_ID)))
-					print("Waited and located image ad element.")
-					if screenshot_success:
-						screenshot_path = os.path.join(self.screenshot_image_ads_folder, "{:s}.png".format(ad_info.id))
-						ad_elem.screenshot(os.path.abspath(screenshot_path))
-						print("Took a screenshot.")
-					image_url = ad_elem.find_element_by_class_name(IMAGE_AD_IMAGE_CLASS_NAME).get_attribute("src")
-					image_html = ad_elem.get_attribute("outerHTML")
-					is_ad_found = True
-					print("Extracted image source URL of the image ad.")
-					
-				except TimeoutException:
-					if screenshot_error:
-						screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
-						self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
-					print("Cannot locate image ad element.")
+			self.driver.get(ad_info.url)
+		except TimeoutException:
+			print("Cannot open webpage, after waiting up to {:d} seconds.".format(PAGE_LOAD_TIME_OUT_SECS))
+		except:
+			print("Unknown error when opening webpage.")
+			is_unknown_error = True
+		else:
+			print("Opened webpage.")
+			is_url_accessed = True
 
+			try:
+				elem = WebDriverWait(self.driver, ELEMENT_TIMEOUT_SECS).until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, CREATIVE_WRAPPER_CLASS_NAME)))
 			except TimeoutException:
+				print("Cannot locate the creative wrapper, after waiting up to {:d} seconds.".format(ELEMENT_TIMEOUT_SECS))
 				if screenshot_error:
 					screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
 					self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
-				print("Cannot locate iframe containing image ad.")
-
-		except TimeoutException:
-			if screenshot_error:
-				screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
-				self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
-			print("Cannot locate creative wrapper after waiting {:d} seconds".format(TIMEOUT_MAX_SECS))
+					print("Took a screenshot of the error.")
+			except:
+				print("Unknown error when locating the creative wrapper.")
+				is_unknown_error = True
+			else:
+				print("Waited and located creative wrapper.")
+				
+				try:
+					WebDriverWait(self.driver, ELEMENT_TIMEOUT_SECS).until(expected_conditions.frame_to_be_available_and_switch_to_it((By.TAG_NAME, IMAGE_AD_IFRAME_TAG_NAME)))
+				except TimeoutException:
+					print("Cannot locate iframe containing the image ad, after waiting up to {:d} seconds.".format(ELEMENT_TIMEOUT_SECS))
+					if screenshot_error:
+						screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
+						self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
+						print("Took a screenshot of the error.")
+				except:
+					print("Unknown error when locating iframe containing the image ad.")
+					is_unknown_error = True
+				else:
+					print("Waited and switched to iframe containing the image ad.")
+					
+					try:
+						ad_elem = WebDriverWait(self.driver, ELEMENT_TIMEOUT_SECS).until(expected_conditions.visibility_of_element_located((By.ID, IMAGE_AD_CONTAINER_ID)))
+					except TimeoutException:
+						print("Cannot locate image ad container element, after waiting up to {:d} seconds.".format(ELEMENT_TIMEOUT_SECS))
+						if screenshot_error:
+							screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
+							self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
+							print("Took a screenshot of the error.")
+					except:
+						print("Unknown error when locating image ad container element.")
+						is_unknown_error = True
+					else:
+						print("Waited and located image ad container element.")
+						image_url = ad_elem.find_element_by_class_name(IMAGE_AD_SRC_CLASS_NAME).get_attribute("src")
+						image_html = ad_elem.get_attribute("outerHTML")
+						print("Extracted source URL and HTML from the image ad.")
+						if screenshot_success:
+							screenshot_path = os.path.join(self.screenshot_image_ads_folder, "{:s}.png".format(ad_info.id))
+							ad_elem.screenshot(os.path.abspath(screenshot_path))
+							print("Took a screenshot of the image ad.")
+						is_ad_found = True
 
 		self.conn.execute(self.db.ad_content.insert(), {
 			"ad_id": ad_info.id,
@@ -238,20 +287,73 @@ class GoogleAdCreativesDownloadHelper:
 			"is_ad_found": is_ad_found,
 		})
 		print()
+		return is_unknown_error
 
 	def _download_vidoe_ad(self, ad_info, screenshot_success = False, screenshot_error = True):
-		print("Skipping video ads.")
+		video_url = None
+		screenshot_path = None
+		is_url_accessed = False
+		is_ad_found = False
+		is_unknown_error = False
+
+		self.driver.set_page_load_timeout(PAGE_LOAD_TIME_OUT_SECS)
+		try:
+			self.driver.get(ad_info.url)
+		except TimeoutException:
+			print("Cannot open webpage, after waiting up to {:d} seconds.".format(PAGE_LOAD_TIME_OUT_SECS))
+		except:
+			print("Unknown error when opening webpage.")
+			is_unknown_error = True
+		else:
+			print("Opened webpage.")
+			is_url_accessed = True
+
+			try:
+				elem = WebDriverWait(self.driver, ELEMENT_TIMEOUT_SECS).until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, CREATIVE_WRAPPER_CLASS_NAME)))
+			except TimeoutException:
+				print("Cannot locate creative wrapper, after waiting up to {:d} seconds.".format(ELEMENT_TIMEOUT_SECS))
+				if screenshot_error:
+					screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
+					self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
+					print("Took a screenshot of the error.")
+			except:
+				print("Unknown error when locating creative wrapper.")
+				is_unknown_error = True
+			else:
+				print("Waited and located creative wrapper.")
+				
+				try:
+					iframe_elem = WebDriverWait(self.driver, ELEMENT_TIMEOUT_SECS).until(expected_conditions.visibility_of_element_located((By.TAG_NAME, VIDEO_AD_IFRAME_TAG_NAME)))
+				except TimeoutException:
+					print("Cannot locate iframe containing the video ad, after waiting up to {:d} seconds.".format(ELEMENT_TIMEOUT_SECS))
+					if screenshot_error:
+						screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
+						self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
+						print("Took a screenshot of the error.")
+				except:
+					print("Unknown error when locating iframe containing the video ad.")
+					is_unknown_error = True
+				else:
+					print("Waited and located iframe containing the video ad.")
+					video_url = iframe_elem.get_attribute("src")
+					print("Extracted source URL of the video ad.")
+					if screenshot_success:
+						screenshot_path = os.path.join(self.screenshot_video_ads_folder, "{:s}.png".format(ad_info.id))
+						iframe_elem.screenshot(os.path.abspath(screenshot_path))
+						print("Took a screenshot of the video ad.")
+					is_ad_found = True
+
 		self.conn.execute(self.db.ad_content.insert(), {
 			"ad_id": ad_info.id,
 			"ad_url": ad_info.url,
 			"ad_type": ad_info.type,
-			"video_url": None,
-			"screenshot_path": None,
-			"is_skipped": True,
-			"is_url_accessed": False,
-			"is_ad_found": False,
+			"video_url": video_url,
+			"screenshot_path": screenshot_path,
+			"is_url_accessed": is_url_accessed,
+			"is_ad_found": is_ad_found,
 		})
 		print()
+		return is_unknown_error
 
 	def _download_unknown_ad(self, ad_info, screenshot_success = False, screenshot_error = True):
 		print("Encountered unknown ad type: {:s}".format(ad_info.type))
@@ -259,14 +361,12 @@ class GoogleAdCreativesDownloadHelper:
 			"ad_id": ad_info.id,
 			"ad_url": ad_info.url,
 			"ad_type": ad_info.type,
-			"ad_text": None,
-			"ad_html": None,
-			"screenshot_path": None,
 			"is_skipped": True,
 			"is_url_accessed": False,
 			"is_ad_found": False,
 		})
 		print()
+		return False
 
 	def _download_ad_creative(self, index, total_count, ad_id, screenshot_success = False, screenshot_error = True):
 		ad_info = self._get_ad_info(ad_id)
@@ -274,13 +374,14 @@ class GoogleAdCreativesDownloadHelper:
 		print("[AdCreatives] {:s}".format(self._timestamp()))
 		print("[AdCreatives] Downloading remaining ad {:,d} of {:,d}: {:s}...".format(index, total_count, ad_info.url))
 		if ad_info.type == TEXT_AD_TYPE:
-			self._download_text_ad(ad_info, screenshot_success = screenshot_success, screenshot_error = screenshot_error)
+			is_unknown_error = self._download_text_ad(ad_info, screenshot_success = screenshot_success, screenshot_error = screenshot_error)
 		elif ad_info.type == IMAGE_AD_TYPE:
-			self._download_image_ad(ad_info, screenshot_success = screenshot_success, screenshot_error = screenshot_error)
+			is_unknown_error = self._download_image_ad(ad_info, screenshot_success = screenshot_success, screenshot_error = screenshot_error)
 		elif ad_info.type == VIDEO_AD_TYPE:
-			self._download_vidoe_ad(ad_info, screenshot_success = screenshot_success, screenshot_error = screenshot_error)
+			is_unknown_error = self._download_vidoe_ad(ad_info, screenshot_success = screenshot_success, screenshot_error = screenshot_error)
 		else:
-			self._download_unknown_ad(ad_info, screenshot_success = screenshot_success, screenshot_error = screenshot_error)
+			is_unknown_error = self._download_unknown_ad(ad_info, screenshot_success = screenshot_success, screenshot_error = screenshot_error)
+		return is_unknown_error
 
 	def download_ad_creatives(self, ad_type, limit, screenshot):
 		if self.verbose:
@@ -297,13 +398,14 @@ class GoogleAdCreativesDownloadHelper:
 				print("[AdCreatives] {:s}".format(self._timestamp()))
 				print("Number of remaining ads (type = {:s}) = {:,d} / {:,d}".format(ad_type, i + 1, len(remaining_ad_ids)))
 				print()
-			self._download_ad_creative(i + 1, len(remaining_ad_ids), ad_id, screenshot_success = screenshot)
+			is_unknown_error = self._download_ad_creative(i + 1, len(remaining_ad_ids), ad_id, screenshot_success = screenshot)
 			if i + 1 >= limit:
 				print()
 				break
-			if i + 1 % 1000 == 0:
+			if i + 1 % DRIVER_RESTART_PAGES == 0 or is_unknown_error:
 				self._stop_webdriver()
 				self._start_webdriver()
+			time.sleep(0.25)
 		self._stop_webdriver()
 
 		if self.verbose:
