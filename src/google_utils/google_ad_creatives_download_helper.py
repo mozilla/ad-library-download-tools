@@ -7,10 +7,11 @@ from collections import namedtuple
 from datetime import datetime
 import os
 import random
+import re
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 import sqlalchemy
-from sqlalchemy.sql import select, func
+from sqlalchemy.sql import select
 import time
 
 TEXT_AD_TYPE = "Text"
@@ -20,7 +21,8 @@ VIDEO_AD_TYPE = "Video"
 DRIVER_RESTART_PAGES = 100
 PAGE_TIMEOUT_SECS = 30.0
 ELEMENT_TIMEOUT_SECS = 4.0
-SCREENSHOT_DELAY_SECS = 0.5
+IMAGE_AD_SCREENSHOT_DELAY_SECS = 0.5
+VIDEO_AD_SCREENSHOT_DELAY_SECS = 1.0
 
 CREATIVE_WRAPPER_CLASS_NAME = "creative-wrapper"
 REMOVED_AD_CONTAINER_TAG_NAME = "unrenderable-ad"
@@ -29,6 +31,8 @@ TEXT_AD_CONTAINER_TAG_NAME = "text-ad"
 IMAGE_AD_IFRAME_TAG_NAME = "iframe"
 IMAGE_AD_IMG_TAG_NAME = "img"
 VIDEO_AD_IFRAME_TAG_NAME = "iframe"
+
+YOUTUBE_ID_REGEX = re.compile(r"^https://www\.youtube\.com/embed/([^/?]+)(\?.+)$")
 
 AdInfo = namedtuple("AdInfo", ["id", "url", "type"])
 
@@ -144,6 +148,14 @@ class GoogleAdCreativesDownloadHelper:
 			type = row[self.library_db.creative_stats_table.c.ad_type],
 		)
 		return ad_info
+	
+
+	def _get_youtube_id_from_url(self, url):
+		m = YOUTUBE_ID_REGEX.match(url)
+		if m is not None:
+			return m.group(1)
+		else:
+			return None
 	
 	def _download_text_ad(self, ad_info, screenshot_success = False, screenshot_error = True):
 		ad_html = None
@@ -373,7 +385,7 @@ class GoogleAdCreativesDownloadHelper:
 					in_iframe = True
 					if screenshot_success:
 						has_ad_screnshot = True
-						time.sleep(SCREENSHOT_DELAY_SECS)
+						time.sleep(IMAGE_AD_SCREENSHOT_DELAY_SECS)
 						iframe_elem.screenshot(ad_screenshot_path)
 						print("  .     Took a screenshot of the image ad.")
 
@@ -406,67 +418,125 @@ class GoogleAdCreativesDownloadHelper:
 		return is_unknown_error
 
 	def _download_vidoe_ad(self, ad_info, screenshot_success = False, screenshot_error = True):
+		ad_html = None
 		video_url = None
-		screenshot_path = None
+		video_youtube_id = None
 		is_url_accessed = False
 		is_ad_found = False
+		is_ad_removed = False
+		is_known_error = False
 		is_unknown_error = False
+		has_ad_screenshot = False
+		has_error_screenshot = False
+
+		screenshot_path = None
+		ad_screenshot_path = os.path.abspath(os.path.join(self.screenshot_video_ads_folder, "{:s}.png".format(ad_info.id)))
+		error_screenshot_path = os.path.abspath(os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id)))
 
 		self.driver.set_page_load_timeout(PAGE_TIMEOUT_SECS)
 		try:
 			self.driver.get(ad_info.url)
 		except TimeoutException:
-			print("Cannot open webpage, after waiting up to {:1.1f} seconds.".format(PAGE_TIMEOUT_SECS))
+			print("X       Cannot open webpage, after waiting up to {:1.1f} seconds.".format(PAGE_TIMEOUT_SECS))
+			is_known_error = True
 		except:
-			print("Unknown error when opening webpage.")
+			print("E       Unknown error when opening webpage.")
 			is_unknown_error = True
 		else:
-			print("Opened webpage.")
+			print(">       Opened webpage.")
 			is_url_accessed = True
 
 			try:
-				elem = WebDriverWait(self.driver, ELEMENT_TIMEOUT_SECS).until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, CREATIVE_WRAPPER_CLASS_NAME)))
-			except TimeoutException:
-				print("Cannot locate creative wrapper.")
+				wrapper_elem = self.driver.find_element_by_class_name(CREATIVE_WRAPPER_CLASS_NAME)
+			except NoSuchElementException:
+				print("-X      Cannot locate creative wrapper.")
+				is_known_error = True
 				if screenshot_error:
-					screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
-					self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
-					print("Took a screenshot of the error.")
+					has_error_screenshot = True
+					self.driver.get_screenshot_as_file(error_screenshot_path)
+					print(" .      Took a screenshot of the webpage.")
 			except:
-				print("Unknown error when locating creative wrapper.")
+				print("-E      Unknown error when locating creative wrapper.")
 				is_unknown_error = True
+				if screenshot_error:
+					has_error_screenshot = True
+					self.driver.get_screenshot_as_file(error_screenshot_path)
+					print(" .      Took a screenshot of the webpage.")
 			else:
-				print("Located creative wrapper.")
-				
-				try:
-					iframe_elem = WebDriverWait(self.driver, ELEMENT_TIMEOUT_SECS).until(expected_conditions.visibility_of_element_located((By.TAG_NAME, VIDEO_AD_IFRAME_TAG_NAME)))
-				except TimeoutException:
-					print("Cannot locate iframe containing the video ad.")
-					if screenshot_error:
-						screenshot_path = os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id))
-						self.driver.get_screenshot_as_file(os.path.abspath(screenshot_path))
-						print("Took a screenshot of the error.")
-				except:
-					print("Unknown error when locating iframe containing the video ad.")
-					is_unknown_error = True
-				else:
-					print("Located iframe containing the video ad.")
-					video_url = iframe_elem.get_attribute("src")
-					print("Extracted source URL of the video ad.")
-					if screenshot_success:
-						screenshot_path = os.path.join(self.screenshot_video_ads_folder, "{:s}.png".format(ad_info.id))
-						iframe_elem.screenshot(os.path.abspath(screenshot_path))
-						print("Took a screenshot of the video ad.")
-					is_ad_found = True
+				print("->      Located creative wrapper.")
 
-		self.conn.execute(self.db.ad_content.insert(), {
+				try:
+					iframe_elem = wrapper_elem.find_element_by_tag_name(VIDEO_AD_IFRAME_TAG_NAME)
+				except NoSuchElementException:
+					print("--X     Cannot locate iframe containing the video ad.")
+					
+					try:
+						removed_elem = wrapper_elem.find_element_by_tag_name(REMOVED_AD_CONTAINER_TAG_NAME)
+					except NoSuchElementException:
+						print("---X    Cannot locate ad removal container element.")
+						is_known_error = True
+						if screenshot_success:
+							has_ad_screnshot = True
+							self.driver.get_screenshot_as_file(ad_screenshot_path)
+							print("   .    Took a screenshot of the image ad.")
+
+					except:
+						print("---E    Unknown error when locating ad removal container element.")
+						is_unknown_error = True
+						if screenshot_error:
+							has_error_screenshot = True
+							self.driver.get_screenshot_as_file(error_screenshot_path)
+							print("   .    Took a screenshot of the error.")
+					else:
+						print("--->    Located ad removal container element.")
+						is_ad_removed = True
+						if screenshot_error:
+							has_error_screenshot = True
+							self.driver.get_screenshot_as_file(error_screenshot_path)
+							print("   .    Took a screenshot of the error.")
+
+				except:
+					print("--E     Unknown error when locating iframe containing the video ad.")
+					is_unknown_error = True
+					if screenshot_error:
+						has_error_screenshot = True
+						self.driver.get_screenshot_as_file(error_screenshot_path)
+						print("  .     Took a screenshot of the error.")
+				else:
+					print("-->     Located iframe containing the video ad.")
+					is_ad_found = True
+					if screenshot_success:
+						has_ad_screnshot = True
+						time.sleep(VIDEO_AD_SCREENSHOT_DELAY_SECS)
+						iframe_elem.screenshot(ad_screenshot_path)
+						print("  .     Took a screenshot of the video ad.")
+					video_url = iframe_elem.get_attribute("src")
+					video_youtube_id = self._get_youtube_id_from_url(video_url)
+					print("  .     Extracted source URL of the video ad.")
+
+					self.driver.switch_to.frame(0)
+					print("--->    Switched to iframe containing the video ad.")
+					body_elem = self.driver.find_element_by_tag_name("body")
+					ad_html = body_elem.get_attribute("outerHTML")
+					print("   .    Extracted ad HTML from the video ad.")
+
+		if has_ad_screenshot:
+			screenshot_path = ad_screenshot_path
+		if has_error_screenshot:
+			screenshot_path = error_screenshot_path 
+		
+		self.conn.execute(self.db.video_ads.insert(), {
 			"ad_id": ad_info.id,
 			"ad_url": ad_info.url,
-			"ad_type": ad_info.type,
+			"ad_html": ad_html,
 			"video_url": video_url,
-			"screenshot_path": screenshot_path,
+			"video_youtube_id": video_youtube_id,
 			"is_url_accessed": is_url_accessed,
 			"is_ad_found": is_ad_found,
+			"is_ad_removed": is_ad_removed,
+			"is_known_error": is_known_error,
+			"is_unknown_error": is_unknown_error,
+			"screenshot_path": screenshot_path,
 		})
 		print()
 		return is_unknown_error
