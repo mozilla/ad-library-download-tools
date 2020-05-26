@@ -16,7 +16,7 @@ GOOGLE_AD_LIBRARY_DB_FILENAME = "google_ad_library.sqlite"
 GOOGLE_AD_CREATIVES_DB_FILENAME = "google_ad_creatives.sqlite"
 
 GOOGLE_WINDOW_WIDTH = 1280
-GOOGLE_WINDOW_HEIGHT = 1024
+GOOGLE_WINDOW_HEIGHT = 1080
 GOOLGE_TEXT_AD_SCREENSHOTS = "screenshots/text-ads"
 GOOLGE_IMAGE_AD_SCREENSHOTS = "screenshots/image-ads"
 GOOLGE_VIDEO_AD_SCREENSHOTS = "screenshots/video-ads"
