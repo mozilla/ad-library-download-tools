@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from sqlalchemy import Table, Column, Integer, String, Text, DateTime, Boolean, MetaData
-from sqlalchemy.sql import text
 
 class GoogleAdCreativesDB:
 	def __init__(self, engine):

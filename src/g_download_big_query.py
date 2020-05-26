@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import google_utils
-import arg_parse
+import argparse
 
 parser = argparse.ArgumentParser(
 	usage = "Download Google Ad Library.",
