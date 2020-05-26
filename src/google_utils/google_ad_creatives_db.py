@@ -31,6 +31,8 @@ class GoogleAdCreativesDB:
 			Column("ad_id", String, unique = True, nullable = False),
 			Column("ad_url", String, nullable = False),
 			Column("ad_html", Text, default = None),
+			Column("in_iframe", Boolean, default = False, nullable = False),
+			Column("in_img", Boolean, default = False, nullable = False),
 			Column("is_url_accessed", Boolean, default = False, nullable = False),
 			Column("is_ad_found", Boolean, default = False, nullable = False),
 			Column("is_ad_removed", Boolean, default = False, nullable = False),
