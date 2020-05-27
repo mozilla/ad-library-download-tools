@@ -171,7 +171,6 @@ class GoogleAdCreativesDownloadHelper:
 		has_ad_screenshot = False
 		has_error_screenshot = False
 
-		screenshot_path = None
 		ad_screenshot_path = os.path.abspath(os.path.join(self.screenshot_text_ads_folder, "{:s}.png".format(ad_info.id)))
 		error_screenshot_path = os.path.abspath(os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id)))
 
@@ -256,11 +255,6 @@ class GoogleAdCreativesDownloadHelper:
 						ad_elem.screenshot(ad_screenshot_path)
 						print("  .     Took a screenshot of the text ad.")
 
-		if has_ad_screenshot:
-			screenshot_path = ad_screenshot_path
-		if has_error_screenshot:
-			screenshot_path = error_screenshot_path 
-
 		self.conn.execute(self.db.text_ads.insert(), {
 			"ad_id": ad_info.id,
 			"ad_url": ad_info.url,
@@ -273,7 +267,6 @@ class GoogleAdCreativesDownloadHelper:
 			"is_ad_removed": is_ad_removed,
 			"is_known_error": is_known_error,
 			"is_unknown_error": is_unknown_error,
-			"screenshot_path": screenshot_path,
 		})
 		print()
 		return is_unknown_error
@@ -293,7 +286,6 @@ class GoogleAdCreativesDownloadHelper:
 		has_ad_screenshot = False
 		has_error_screenshot = False
 
-		screenshot_path = None
 		ad_screenshot_path = os.path.abspath(os.path.join(self.screenshot_image_ads_folder, "{:s}.png".format(ad_info.id)))
 		error_screenshot_path = os.path.abspath(os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id)))
 
@@ -411,11 +403,6 @@ class GoogleAdCreativesDownloadHelper:
 					ad_html = body_elem.get_attribute("outerHTML")
 					print("   .    Extracted outer html from the image ad.")
 
-		if has_ad_screenshot:
-			screenshot_path = ad_screenshot_path
-		if has_error_screenshot:
-			screenshot_path = error_screenshot_path 
-
 		self.conn.execute(self.db.image_ads.insert(), {
 			"ad_id": ad_info.id,
 			"ad_url": ad_info.url,
@@ -430,7 +417,6 @@ class GoogleAdCreativesDownloadHelper:
 			"is_ad_removed": is_ad_removed,
 			"is_known_error": is_known_error,
 			"is_unknown_error": is_unknown_error,
-			"screenshot_path": screenshot_path,
 		})
 		print()
 		return is_unknown_error
@@ -452,7 +438,6 @@ class GoogleAdCreativesDownloadHelper:
 		has_ad_screenshot = False
 		has_error_screenshot = False
 
-		screenshot_path = None
 		ad_screenshot_path = os.path.abspath(os.path.join(self.screenshot_video_ads_folder, "{:s}.png".format(ad_info.id)))
 		error_screenshot_path = os.path.abspath(os.path.join(self.screenshot_errors_folder, "{:s}.png".format(ad_info.id)))
 
@@ -583,16 +568,12 @@ class GoogleAdCreativesDownloadHelper:
 					youtube_id = self._get_youtube_id_from_youtube_url(youtube_url)
 					print("  .     Extracted YouTube url and YouTube id from the video ad.")
 
-					self.driver.switch_to.frame(0)
-					print("--->    Switched to iframe containing the video ad.")
-					body_elem = self.driver.find_element_by_tag_name("body")
-					ad_html = body_elem.get_attribute("outerHTML")
-					print("   .    Extracted outer html from the video ad.")
-
-		if has_ad_screenshot:
-			screenshot_path = ad_screenshot_path
-		if has_error_screenshot:
-			screenshot_path = error_screenshot_path
+					if len(youtube_url) == 0 or len(youtube_id) == 0:
+						self.driver.switch_to.frame(0)
+						print("---->   Switched to iframe containing the non-YouTube video ad.")
+						body_elem = self.driver.find_element_by_tag_name("body")
+						ad_html = body_elem.get_attribute("outerHTML")
+						print("    .   Extracted outer html from the non-YouTube video ad.")
 
 		self.conn.execute(self.db.video_ads.insert(), {
 			"ad_id": ad_info.id,
@@ -610,7 +591,6 @@ class GoogleAdCreativesDownloadHelper:
 			"is_ad_removed": is_ad_removed,
 			"is_known_error": is_known_error,
 			"is_unknown_error": is_unknown_error,
-			"screenshot_path": screenshot_path,
 		})
 		print()
 		return is_unknown_error

@@ -23,10 +23,9 @@ class GoogleAdCreativesDB:
 			Column("is_ad_removed", Boolean, default = False, nullable = False),
 			Column("is_known_error", Boolean, default = False, nullable = False),
 			Column("is_unknown_error", Boolean, default = False, nullable = False),
-			Column("screenshot_path", String, default = None),
 			Column("timestamp", DateTime, default = datetime.now, nullable = False),
 		)
-		
+
 		self.image_ads = Table("image_ads", metadata,
 			Column("key", Integer, primary_key = True),
 			Column("ad_id", String, unique = True, nullable = False),
@@ -42,7 +41,6 @@ class GoogleAdCreativesDB:
 			Column("is_ad_removed", Boolean, default = False, nullable = False),
 			Column("is_known_error", Boolean, default = False, nullable = False),
 			Column("is_unknown_error", Boolean, default = False, nullable = False),
-			Column("screenshot_path", String, default = None),
 			Column("timestamp", DateTime, default = datetime.now, nullable = False),
 		)
 
@@ -63,6 +61,5 @@ class GoogleAdCreativesDB:
 			Column("is_ad_removed", Boolean, default = False, nullable = False),
 			Column("is_known_error", Boolean, default = False, nullable = False),
 			Column("is_unknown_error", Boolean, default = False, nullable = False),
-			Column("screenshot_path", String, default = None),
 			Column("timestamp", DateTime, default = datetime.now, nullable = False),
 		)
