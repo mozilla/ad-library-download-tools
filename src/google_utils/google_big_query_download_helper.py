@@ -71,7 +71,7 @@ class GoogleBigQueryDownloadHelper:
 					conn.execute(self.db.advertiser_declared_stats_table.insert(), {
 						"advertiser_id": row.advertiser_id,
 						"advertiser_declared_name": row.advertiser_declared_name,
-						"advertiser_declared_regulatory_id": row.advertiser_declared_regulartory_id,
+						"advertiser_declared_regulatory_id": row.advertiser_declared_regulatory_id,
 						"advertiser_declared_scope": row.advertiser_declared_scope,
 					})
 		self._finish_stable_download(table)
