@@ -56,6 +56,9 @@ class GoogleBigQueryDownloadHelper:
 			timestamp = datetime.now().strftime("%-I:%M:%S %p @ %A, %B %-d, %Y")
 			print("[BigQuery] Finish = {:s}".format(timestamp))
 
+	def get_service_account_key_path(self):
+		return os.path.join(Constants.PREF_PATH, GC_SERVICE_ACCOUNT_KEY)
+
 	def download_advertiser_declared_stats_table(self):
 		table = self._get_table_path("advertiser_declared_stats")
 		self._start_table_download(table)
