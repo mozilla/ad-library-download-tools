@@ -632,7 +632,7 @@ class GoogleAdCreativesDownloadHelper:
 		ad_info = self._get_ad_info(ad_id)
 
 		print("[AdCreatives] {:s}".format(self._timestamp()))
-		print("[AdCreatives] Downloading remaining #ad {:,d} of {:,d}: {:s}...".format(index, total_count, ad_info.url))
+		print("[AdCreatives] Downloading remaining ad #{:,d} of {:,d}: {:s}...".format(index, total_count, ad_info.url))
 		if ad_info.type == TEXT_AD_TYPE:
 			is_unknown_error = self._download_text_ad(ad_info, screenshot_success = screenshot_success, screenshot_error = screenshot_error)
 		elif ad_info.type == IMAGE_AD_TYPE:
