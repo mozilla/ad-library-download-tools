@@ -383,7 +383,7 @@ class GoogleAdCreativesDownloadHelper:
 							time.sleep(IMAGE_AD_SCREENSHOT_DELAY_SECS)
 							img_elem.screenshot(ad_screenshot_path)
 							print("   .    Took a screenshot of the image ad.")
-							has_ad_screnshot = True
+							has_ad_screenshot = True
 
 				except:
 					print("--E     Unknown error when locating iframe containing the image ad.")
@@ -403,7 +403,7 @@ class GoogleAdCreativesDownloadHelper:
 						time.sleep(IMAGE_AD_SCREENSHOT_DELAY_SECS)
 						iframe_elem.screenshot(ad_screenshot_path)
 						print("  .     Took a screenshot of the image ad.")
-						has_ad_screnshot = True
+						has_ad_screenshot = True
 
 					self.driver.switch_to.frame(0)
 					print("--->    Switched to iframe containing the image ad.")
@@ -558,7 +558,7 @@ class GoogleAdCreativesDownloadHelper:
 									has_error_screenshot = True
 							else:
 								print("   .    Took a screenshot of the video ad.")
-								has_ad_screnshot = True
+								has_ad_screenshot = True
 
 				except:
 					print("--E     Unknown error when locating iframe containing the video ad.")
@@ -578,7 +578,7 @@ class GoogleAdCreativesDownloadHelper:
 						time.sleep(VIDEO_AD_SCREENSHOT_DELAY_SECS)
 						iframe_elem.screenshot(ad_screenshot_path)
 						print("  .     Took a screenshot of the video ad.")
-						has_ad_screnshot = True
+						has_ad_screenshot = True
 					youtube_url = iframe_elem.get_attribute("src")
 					youtube_id = self._get_youtube_id_from_youtube_url(youtube_url)
 					print("  .     Extracted YouTube url and YouTube id from the video ad.")
@@ -592,7 +592,7 @@ class GoogleAdCreativesDownloadHelper:
 		if has_ad_screenshot:
 			screenshot_path = ad_screenshot_path
 		if has_error_screenshot:
-			screenshot_path = error_screenshot_path 
+			screenshot_path = error_screenshot_path
 
 		self.conn.execute(self.db.video_ads.insert(), {
 			"ad_id": ad_info.id,
