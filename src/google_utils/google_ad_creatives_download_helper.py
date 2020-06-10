@@ -18,11 +18,12 @@ TEXT_AD_TYPE = "Text"
 IMAGE_AD_TYPE = "Image"
 VIDEO_AD_TYPE = "Video"
 
-DRIVER_RESTART_PAGES = 100
+DRIVER_RESTART_PAGES = 500
 PAGE_TIMEOUT_SECS = 30.0
 ELEMENT_TIMEOUT_SECS = 4.0
 IMAGE_AD_SCREENSHOT_DELAY_SECS = 0.5
 VIDEO_AD_SCREENSHOT_DELAY_SECS = 1.0
+RESTART_DRIVER_DELAY_SECS = 5.0
 
 CREATIVE_WRAPPER_CLASS_NAME = "creative-wrapper"
 REMOVED_AD_CONTAINER_TAG_NAME = "unrenderable-ad"
@@ -100,6 +101,7 @@ class GoogleAdCreativesDownloadHelper:
 			print("[AdCreatives] Stopping WebDriver...")
 			self.driver.close()
 			self.driver = None
+			time.sleep(RESTART_DRIVER_DELAY_SECS)
 			print("[AdCreatives] Stopped WebDriver")
 			print()
 
